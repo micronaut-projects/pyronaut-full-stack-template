@@ -74,9 +74,17 @@ enabled = true
 path = '/api/v1/logout'
 get-allowed = false
 
+# No redirects on login.
+#
+# With redirects on, Micronaut Security answers a failed login with 303 to
+# `/login?error=true`, and any client that follows redirects — including the
+# test client and fetch() — sees the rendered login page and a 200, making a
+# failed login indistinguishable from a successful one. Off, /api/v1/login
+# answers 200 with the session cookie, or 401. The browser decides where to
+# navigate next.
 [micronaut.security.redirect]
-login-success = '/'
-login-failure = '/login?error=true'
+enabled = false
+# Still required by configuration validation even when redirects are off.
 logout = '/login'
 
 # ---------------------------------------------------------------------------

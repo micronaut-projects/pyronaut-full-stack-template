@@ -4,16 +4,52 @@ A port of `fastapi/full-stack-fastapi-template` to Pyronaut. The design, the ope
 questions and the gap list live in [PLAN.md](./PLAN.md) — read it before making
 architectural decisions; most of them have already been made and justified there.
 
-## The one thing to know
+## State
 
-**The frontend is verified. The Python and JVM side has never been compiled.**
+The backend compiles and runs. `pyronaut install`, `pyronaut process` and
+`pyronaut dev` all pass against a real MySQL from Test Resources: Flyway applies
+the schema, the first superuser is seeded, login issues a JWT cookie, and the
+React pages server-render on GraalJS with the hydration bundle injected.
 
-Everything under `src/` was written against verified reference sources (see
-[Where the patterns come from](#where-the-patterns-come-from)) but no part of it
-has been through `pyronaut process`. Expect real errors on the first run —
-wrong import paths, annotation forms that do not resolve, Micronaut APIs that
-differ from what was assumed. That is expected, not a surprise. Fix them; do not
-assume the existing code is correct because it is committed.
+Still to do: confirm the pytest suite passes, the Playwright end-to-end suite,
+the generated TypeScript client, and CI.
+
+## Gotchas this project already paid for
+
+Each of these cost a debugging cycle. They are not in the Pyronaut docs.
+
+- **No custom `__init__.py`.** Micronaut generates them for the GraalPy VFS and
+  rejects your own. Packages are still packages — just do not write the file.
+- **Generated `__init__.py` imports every module in its package, eagerly.** So
+  two packages that import from each other deadlock at startup even when the
+  individual modules would be fine. Keep cross-package dependencies
+  one-directional: `security` and `controllers` may import `services`, never the
+  reverse. `app/passwords.py` sits at the top level for exactly this reason.
+- **`StartupEvent` and `ApplicationEventListener` live in
+  `micronaut.context.event`**, not `micronaut.runtime.event`. When an import
+  fails at runtime, grep `__pyronaut__/ide-stubs/` for the class name rather
+  than guessing from the Java package.
+- **Annotation values must be compile-time constants.** `QueryValue(defaultValue=str(SIZE))`
+  is silently dropped — the processor reads source, it does not evaluate. The
+  parameter then shows up as `required: true` in the OpenAPI schema.
+- **A Python exception cannot be an `ExceptionHandler` type parameter.** That
+  bound is Java's `Throwable`. Catch Python exceptions in the controller.
+- **POM-only Maven coordinates cannot be declared.** Pyronaut resolves every
+  dependency as a jar. Declare the concrete jars instead — see the GraalJS
+  comment in `pyproject.toml`, and pyronaut#166.
+- **`Pageable.from(...)` is unreachable** — `from` is a Python keyword. Use the
+  `page_request()` helper in `app/paging.py`.
+- **The JWT secret must be at least 256 bits** for HS256. A short one fails only
+  at login, as "Cannot obtain an access token".
+- **Do not let Test Resources resolve a property it does not own.** Its resolver
+  re-enters itself and the stack overflows, and it only bites beans built lazily
+  during a request. This is what `app/mail_session.py` works around; read that
+  module before touching mail configuration.
+- **`npm run build` before `pyronaut dev`.** The bundles are gitignored, so a
+  fresh clone has none and every server-rendered route returns 500.
+- **Killing `pyronaut dev` leaves stale Test Resources state.** The next start
+  fails with "Test resource service is not available". Clear it with
+  `rm -rf .micronaut/test-resources __pyronaut__/test-resources-session.json`.
 
 ## Environment this needs
 

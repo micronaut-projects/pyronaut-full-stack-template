@@ -16,7 +16,14 @@ from typing import Annotated
 from jakarta.validation.constraints import Email, NotBlank, Size
 from micronaut.serde.annotation import Serdeable
 
-PASSWORD = Size(min=8, max=128, message="Password must be between 8 and 128 characters")
+# NOTE: every constraint below is written out in full, deliberately.
+#
+# Annotation arguments are read from source by the processor, not evaluated, so
+# a shared constant — `PASSWORD = Size(min=8, max=128)` used as
+# `Annotated[str, NotBlank, PASSWORD]` — is silently dropped. The field then has
+# no length constraint at all and the API happily accepts a four-character
+# password. The same rule bites computed `defaultValue` arguments; see
+# controllers/users.py. Repetition here is the safe option.
 
 
 # --------------------------------------------------------------------------
@@ -26,7 +33,7 @@ PASSWORD = Size(min=8, max=128, message="Password must be between 8 and 128 char
 @dataclass
 class UserCreate:
     email: Annotated[str, NotBlank, Email, Size(max=255)]
-    password: Annotated[str, NotBlank, PASSWORD]
+    password: Annotated[str, NotBlank, Size(min=8, max=128, message="Password must be between 8 and 128 characters")]
     fullName: Annotated[str | None, Size(max=255)] = None
     isActive: bool = True
     isSuperuser: bool = False
@@ -36,7 +43,7 @@ class UserCreate:
 @dataclass
 class UserRegister:
     email: Annotated[str, NotBlank, Email, Size(max=255)]
-    password: Annotated[str, NotBlank, PASSWORD]
+    password: Annotated[str, NotBlank, Size(min=8, max=128, message="Password must be between 8 and 128 characters")]
     fullName: Annotated[str | None, Size(max=255)] = None
 
 
@@ -44,7 +51,7 @@ class UserRegister:
 @dataclass
 class UserUpdate:
     email: Annotated[str | None, Email, Size(max=255)] = None
-    password: Annotated[str | None, PASSWORD] = None
+    password: Annotated[str | None, Size(min=8, max=128, message="Password must be between 8 and 128 characters")] = None
     fullName: Annotated[str | None, Size(max=255)] = None
     isActive: bool | None = None
     isSuperuser: bool | None = None
@@ -60,8 +67,8 @@ class UserUpdateMe:
 @Serdeable
 @dataclass
 class UpdatePassword:
-    currentPassword: Annotated[str, NotBlank, PASSWORD]
-    newPassword: Annotated[str, NotBlank, PASSWORD]
+    currentPassword: Annotated[str, NotBlank, Size(min=8, max=128, message="Password must be between 8 and 128 characters")]
+    newPassword: Annotated[str, NotBlank, Size(min=8, max=128, message="Password must be between 8 and 128 characters")]
 
 
 @Serdeable
@@ -123,7 +130,7 @@ class ItemsPublic:
 @dataclass
 class NewPassword:
     token: Annotated[str, NotBlank]
-    newPassword: Annotated[str, NotBlank, PASSWORD]
+    newPassword: Annotated[str, NotBlank, Size(min=8, max=128, message="Password must be between 8 and 128 characters")]
 
 
 @Serdeable
