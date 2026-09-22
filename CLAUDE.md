@@ -56,6 +56,10 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   the cause: annotation metadata lives in the bean definition rather than in
   the generated source, which is how `@Controller` and `@Secured` reach the
   runtime.
+- **`additional-resources` does not reach the test classpath** (pyronaut#169).
+  The server-render bundle is therefore resolved by file path in
+  `tests-config/application-test.toml`. Delete that override when the bug is
+  fixed — it exists for no other reason.
 - **`npm run build` before `pyronaut dev`.** The bundles are gitignored, so a
   fresh clone has none and every server-rendered route returns 500.
 - **Killing `pyronaut dev` leaves stale Test Resources state.** The next start
@@ -114,6 +118,31 @@ mounted outside the router context. Keep it green, and add a case to
 - **JVM runtime, not native.** GraalJS does not work in a native image yet
   (PLAN.md §4.4). Keep every other choice native-friendly: no JNI dependencies,
   so that when GraalJS lands the change is a build flag.
+
+## The SSR trap
+
+The server sends the model for **one** screen. Treating that model as if it
+described the whole application is the mistake this codebase has already made
+four times, in four places:
+
+- the route table dispatched on the server's `page` prop, so every client-side
+  navigation re-rendered whichever screen the server sent first;
+- three of the four screens only rendered from `initial` and had no fetch to
+  fall back on;
+- the navigation chrome took the signed-in user from `data.user`, so it vanished
+  as soon as you navigated away from the screen that supplied it;
+- the session lookup ran once on mount, while signed out, and never again.
+
+Every one of them left the server-rendered first paint completely correct, so
+nothing but a real browser doing a real navigation could see them. When adding
+a screen: give it a fetch path for when `initial` is null, take session state
+from `App` rather than the page model, and add a case to `LoginFlowTest.py`
+that navigates to it *from another page* rather than loading it directly.
+
+Signing in is a full `window.location.assign('/')`, not a client-side
+navigation. Identity changes belong to the server in an SSR-first app;
+reconstructing the authenticated shell on the client is what caused three of
+the four bugs above.
 
 ## Where the patterns come from
 

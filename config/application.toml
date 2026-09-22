@@ -45,6 +45,19 @@ enabled = true
 mapping = '/static/**'
 paths = ['file:static']
 
+# Static assets must be reachable without authentication.
+#
+# The security filter applies to every route, including static resources, and
+# the default is to reject. Without this the hydration bundle answers 401: the
+# pages still server-render and look completely correct, but no JavaScript ever
+# loads, so nothing hydrates and every form falls back to a native submit.
+#
+# Curl does not notice — it fetches the HTML and stops. It took a browser test
+# fetching /static/client.js to find it.
+[[micronaut.security.intercept-url-map]]
+pattern = '/static/**'
+access = ['isAnonymous()']
+
 # ---------------------------------------------------------------------------
 # Security. JWT in an HttpOnly cookie so that server-side rendering can read
 # the authenticated user from the request. See PLAN.md section 4.2.

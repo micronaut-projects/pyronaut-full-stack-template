@@ -30,6 +30,10 @@ frontend-host = 'http://localhost:8080'
 # Resolving by file works because tests run from the project root, and it
 # mirrors how the static assets are already served (`paths = ['file:static']`
 # in application.toml). Production packaging keeps the classpath form.
+#
+# TODO: remove this block once https://github.com/micronaut-projects/pyronaut/issues/169 is fixed. The whole
+# override exists only because the test classpath is missing the directory;
+# nothing about testing needs a different bundle path.
 [micronaut.views.react]
 server-bundle-path = 'file:views/ssr-components.mjs'
 client-bundle-url = '/static/client.js'

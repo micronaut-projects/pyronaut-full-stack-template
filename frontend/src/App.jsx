@@ -6,7 +6,7 @@
 // back to a client fetch. That is what keeps the server rendering real rather
 // than decorative — see PLAN.md section 8.3.
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Link, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes, useSearchParams } from 'react-router-dom';
 import { StaticRouter } from 'react-router-dom/server';
 
 import { api } from './api';
@@ -52,7 +52,6 @@ function Login({ initial }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(initial?.error ? 'Incorrect email or password' : null);
   const [busy, setBusy] = useState(false);
-  const navigate = useNavigate();
 
   async function submit(event) {
     event.preventDefault();
@@ -60,7 +59,11 @@ function Login({ initial }) {
     setError(null);
     try {
       await api.login(email, password);
-      navigate('/');
+      // A real navigation, not a client-side one. Signing in changes who the
+      // session belongs to, and the server renders the shell and the initial
+      // model for the authenticated user. Routing client-side would leave the
+      // app showing signed-out chrome until something else refreshed it.
+      window.location.assign('/');
     } catch (failure) {
       setError(failure.status === 401 ? 'Incorrect email or password' : failure.message);
     } finally {
@@ -101,7 +104,6 @@ function Signup() {
   const [form, setForm] = useState({ fullName: '', email: '', password: '' });
   const [error, setError] = useState(null);
   const [errors, setErrors] = useState({});
-  const navigate = useNavigate();
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
 
   async function submit(event) {
@@ -111,7 +113,7 @@ function Signup() {
     try {
       await api.signup(form);
       await api.login(form.email, form.password);
-      navigate('/');
+      window.location.assign('/');
     } catch (failure) {
       setError(failure.message);
       setErrors(failure.errors);
@@ -229,7 +231,10 @@ function ResetPassword({ initial }) {
 
 // ----------------------------------------------------------- dashboard ----
 function Dashboard({ initial }) {
-  const user = initial?.user;
+  const [user, setUser] = useState(initial?.user);
+  useEffect(() => {
+    if (!user) api.me().then(setUser).catch(() => {});
+  }, []);
   return (
     <Page title={`Hi, ${user?.fullName || user?.email || 'there'}`}>
       <p>Welcome back. This page was rendered on the server and hydrated in your browser.</p>
@@ -336,6 +341,13 @@ function Settings({ initial }) {
     email: initial?.user?.email || '',
   });
   const [saved, setSaved] = useState(null);
+  useEffect(() => {
+    if (initial?.user) return;
+    api
+      .me()
+      .then((user) => setProfile({ fullName: user.fullName || '', email: user.email || '' }))
+      .catch(() => {});
+  }, []);
 
   async function save(event) {
     event.preventDefault();
@@ -370,7 +382,11 @@ function Settings({ initial }) {
 
 // --------------------------------------------------------------- admin ----
 function Admin({ initial }) {
-  const users = initial?.users ?? [];
+  const [users, setUsers] = useState(initial?.users);
+  useEffect(() => {
+    if (!users) api.users().then((page) => setUsers(page.data)).catch(() => setUsers([]));
+  }, []);
+  if (!users) return <Page title="Users">Loading…</Page>;
   return (
     <Page title="Users">
       <table data-testid="users-table">
@@ -398,26 +414,25 @@ function Admin({ initial }) {
 }
 
 // --------------------------------------------------------------- routes ---
-const PAGES = {
-  login: Login,
-  signup: Signup,
-  recoverPassword: RecoverPassword,
-  resetPassword: ResetPassword,
-  dashboard: Dashboard,
-  items: Items,
-  settings: Settings,
-  admin: Admin,
-};
-
-function Screen({ page, data }) {
-  const Component = PAGES[page];
-  if (!Component) return <NotFound message={data?.message} />;
-  return <Component initial={data} />;
-}
-
 export function App(props) {
   const { page, data = {}, url } = props || {};
+  // The server model belongs to exactly one screen; every other screen fetches.
+  const on = (name) => (page === name ? data : null);
   const Router = typeof window === 'undefined' ? StaticRouter : BrowserRouter;
+
+  // Who is signed in is a property of the session, not of whichever screen the
+  // server happened to render. Taking it from `data.user` meant the navigation
+  // disappeared the moment you navigated client-side away from the screen that
+  // supplied it. On the server there is no effect to run, so the model's user
+  // is used as-is; in the browser it is confirmed against the API.
+  const [user, setUser] = useState(data.user);
+  useEffect(() => {
+    if (user) return;
+    api
+      .me()
+      .then(setUser)
+      .catch(() => setUser(null));
+  }, []);
   const routerProps = typeof window === 'undefined' ? { location: url || '/' } : {};
 
   // The router wraps the shell, not the other way round: the navigation links
@@ -425,16 +440,27 @@ export function App(props) {
   // provider, so it emits no markup around <html>.
   return (
     <Router {...routerProps}>
-      <Shell user={data.user}>
+      <Shell user={user}>
+        {/*
+          Every route is explicit, and each screen is handed the server model
+          only when the server actually rendered that screen. A catch-all that
+          dispatched on the server's `page` prop would re-render the first
+          screen on every client-side navigation — signing in would leave you
+          looking at the login form, at the dashboard's URL.
+
+          Where `initial` is null the screen fetches for itself, which is what
+          makes client-side navigation work at all.
+        */}
         <Routes>
-          <Route path="/login" element={<Login initial={page === 'login' ? data : null} />} />
+          <Route path="/login" element={<Login initial={on('login')} />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/recover-password" element={<RecoverPassword />} />
-          <Route
-            path="/reset-password"
-            element={<ResetPassword initial={page === 'resetPassword' ? data : null} />}
-          />
-          <Route path="*" element={<Screen page={page} data={data} />} />
+          <Route path="/reset-password" element={<ResetPassword initial={on('resetPassword')} />} />
+          <Route path="/" element={<Dashboard initial={on('dashboard')} />} />
+          <Route path="/items" element={<Items initial={on('items')} />} />
+          <Route path="/settings" element={<Settings initial={on('settings')} />} />
+          <Route path="/admin" element={<Admin initial={on('admin')} />} />
+          <Route path="*" element={<NotFound message={data?.message} />} />
         </Routes>
       </Shell>
     </Router>
