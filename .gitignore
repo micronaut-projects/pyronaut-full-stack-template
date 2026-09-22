@@ -7,8 +7,8 @@ __pycache__/
 *.py[cod]
 
 # Generated JavaScript bundles — built by `npm run build`, never committed
-views/ssr-components.mjs
-static/client.js
+views/ssr-components.mjs*
+static/client.js*
 node_modules/
 
 # Generated API client — built by `npm run generate-client`
