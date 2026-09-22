@@ -50,9 +50,12 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   `signup1` whose digit depends on declaration order. This is why the page
   handlers in `controllers/views.py` are named `*_page`.
 - **Swagger annotations are silently ignored.** `@Tag` and friends import and
-  compile but never reach the OpenAPI document, because the generated Java
-  bridge carries no annotations at all (pyronaut#168). Docstrings *do* work —
-  first sentence becomes `summary`, the whole docstring `description`.
+  compile but never reach the OpenAPI document (pyronaut#168). Docstrings *do*
+  work — first sentence becomes `summary`, the whole docstring `description`.
+  Note that the generated Java stubs carrying no annotations is normal and not
+  the cause: annotation metadata lives in the bean definition rather than in
+  the generated source, which is how `@Controller` and `@Secured` reach the
+  runtime.
 - **`npm run build` before `pyronaut dev`.** The bundles are gitignored, so a
   fresh clone has none and every server-rendered route returns 500.
 - **Killing `pyronaut dev` leaves stale Test Resources state.** The next start
