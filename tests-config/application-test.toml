@@ -1,0 +1,20 @@
+[micronaut.application]
+name = 'pyronaut-full-stack-template-test'
+
+[micronaut.server]
+port = -1
+
+[micronaut.http.client]
+read-timeout = '120s'
+
+[datasources.default]
+db-type = 'mysql'
+dialect = 'MYSQL'
+driver-class-name = 'com.mysql.cj.jdbc.Driver'
+schema-generate = 'NONE'
+
+[app]
+secret-key = 'test-secret-key-that-is-long-enough-for-hmac-sha256'
+first-superuser = 'admin@example.com'
+first-superuser-password = 'testpassword123'
+frontend-host = 'http://localhost:8080'

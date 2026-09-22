@@ -1,0 +1,12 @@
+# Development-only configuration. Mailpit is expected on the default ports:
+#
+#   docker run --rm -p 1025:1025 -p 8025:8025 axllent/mailpit
+#
+# The web interface is then at http://localhost:8025.
+[javamail.properties]
+'mail.smtp.host' = 'localhost'
+'mail.smtp.port' = '1025'
+'mail.smtp.auth' = 'false'
+
+[micronaut.http.services.mailpit]
+url = 'http://localhost:8025'

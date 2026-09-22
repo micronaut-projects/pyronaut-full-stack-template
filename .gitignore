@@ -1,0 +1,23 @@
+# Pyronaut generated state
+__pyronaut__/
+.micronaut/
+.venv/
+*.egg-info/
+__pycache__/
+*.py[cod]
+
+# Generated JavaScript bundles — built by `npm run build`, never committed
+views/ssr-components.mjs
+static/client.js
+node_modules/
+
+# Generated API client — built by `npm run generate-client`
+openapi.json
+
+# Local configuration
+.env
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

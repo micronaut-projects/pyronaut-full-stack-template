@@ -1,0 +1,92 @@
+#:schema ./__pyronaut__/schemas/pyronaut-pyproject.schema.json
+
+[project]
+name = 'pyronaut-full-stack-template'
+version = '0.1.0'
+description = 'Full-stack Pyronaut template: MySQL, Micronaut Data JDBC, Micronaut Security, Micronaut Email and server-rendered React.'
+
+[build-system]
+requires = ['setuptools', 'wheel', 'tomli']
+build-backend = 'setuptools.build_meta'
+
+[tool.setuptools]
+package-dir.'' = 'src'
+packages.find.where = ['src']
+
+[tool.pyronaut.toolchain]
+type = 'jvm'
+
+[tool.pyronaut]
+repositories = ['mavenCentral']
+# Pinned to match the versions the Pyronaut CLI itself is built against;
+# see gradle.properties in micronaut-projects/pyronaut.
+core.version = '5.2.3'
+platform.version = '5.1.0'
+
+[tool.pyronaut.control-panel]
+enabled = true
+
+[tool.pyronaut.sources]
+python = 'src'
+python-test = 'tests'
+java = 'src-java'
+java-test = 'test-java'
+resources = 'config'
+test-resources = 'tests-config'
+# `views` holds the generated server-render bundle, `static` the generated
+# hydration bundle and the assets served from /static/**.
+additional-resources = ['views', 'static']
+
+[tool.pyronaut.test]
+# pytest owns the API suite; JUnit owns the Playwright end-to-end suite.
+engine = 'both'
+
+[tool.pyronaut.test-resources]
+enabled = true
+additional-modules = ['jdbc-mysql']
+client-timeout = 180
+
+[tool.pyronaut.dependencies]
+runtime = [
+  'io.micronaut:micronaut-http-server-netty',
+  'io.micronaut.data:micronaut-data-jdbc',
+  'io.micronaut.sql:micronaut-jdbc-hikari',
+  'com.mysql:mysql-connector-j',
+  'io.micronaut.flyway:micronaut-flyway',
+  'org.flywaydb:flyway-mysql',
+  'io.micronaut.serde:micronaut-serde-jackson',
+  'io.micronaut.validation:micronaut-validation',
+  'io.micronaut.security:micronaut-security-jwt',
+  # BCrypt password hashing. A standalone artifact: no Spring context, no
+  # Spring Boot, pure Java and no JNI — which keeps a future native image
+  # blocked only on GraalJS. See PLAN.md section 7.3.
+  'org.springframework.security:spring-security-crypto:7.1.1',
+  'io.micronaut.email:micronaut-email-javamail',
+  'io.micronaut.email:micronaut-email-template',
+  'org.eclipse.angus:angus-mail',
+  'io.micronaut.views:micronaut-views-react:6.2.0',
+  'org.graalvm.polyglot:polyglot:25.1.3',
+  'org.graalvm.polyglot:js:25.1.3',
+  'io.micronaut.pyronaut:micronaut-pyronaut-logback',
+]
+development-runtime = [
+  'io.micronaut.controlpanel:micronaut-control-panel-datasource',
+]
+build = [
+  'io.micronaut:micronaut-context-python',
+  'io.micronaut:micronaut-inject-python',
+  'io.micronaut.data:micronaut-data-processor',
+  'io.micronaut.serde:micronaut-serde-processor',
+  'io.micronaut.validation:micronaut-validation-processor',
+  'io.micronaut.security:micronaut-security-annotations',
+]
+test = [
+  'io.micronaut.pyronaut:micronaut-pyronaut-pytest',
+  'io.micronaut.pyronaut:micronaut-pyronaut-requests',
+  'io.micronaut.test:micronaut-test-junit5',
+  'io.micronaut.testresources:micronaut-test-resources-jdbc-mysql',
+  'io.micronaut.email:micronaut-email-mailpit-http-client',
+  'org.testcontainers:testcontainers',
+  'com.microsoft.playwright:playwright',
+  'com.microsoft.playwright:playwright-junit',
+]

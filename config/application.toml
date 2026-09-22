@@ -1,0 +1,95 @@
+#:schema ../__pyronaut__/schemas/micronaut-application.schema.json
+
+[micronaut.application]
+name = 'pyronaut-full-stack-template'
+
+# ---------------------------------------------------------------------------
+# Application settings. Every value here can be overridden by an environment
+# variable (APP_SECRET_KEY, APP_FIRST_SUPERUSER, ...) or, in the dev and test
+# environments, by a .env file. See src/app/config.py and src/app/dotenv.py.
+# ---------------------------------------------------------------------------
+[app]
+name = 'Pyronaut Full Stack Project'
+secret-key = 'changethis'
+first-superuser = 'admin@example.com'
+first-superuser-password = 'changethis'
+frontend-host = 'http://localhost:8080'
+emails-from-email = 'info@example.com'
+emails-from-name = 'Pyronaut Full Stack Project'
+email-reset-token-expire-hours = 48
+
+# ---------------------------------------------------------------------------
+# Server-rendered React. One bundle holds every render root: the `App` page
+# tree and the transactional email components.
+# ---------------------------------------------------------------------------
+[micronaut.views]
+folder = '.'
+
+[micronaut.views.react]
+server-bundle-path = 'classpath:ssr-components.mjs'
+client-bundle-url = '/static/client.js'
+
+[micronaut.router.static-resources.default]
+enabled = true
+mapping = '/static/**'
+paths = ['file:static']
+
+# ---------------------------------------------------------------------------
+# Security. JWT in an HttpOnly cookie so that server-side rendering can read
+# the authenticated user from the request. See PLAN.md section 4.2.
+# ---------------------------------------------------------------------------
+[micronaut.security]
+authentication = 'cookie'
+
+[micronaut.security.token.jwt.signatures.secret.generator]
+secret = '${app.secret-key}'
+jws-algorithm = 'HS256'
+
+[micronaut.security.token.generator.access-token]
+expiration = 691200 # 8 days, matching the upstream template
+
+[micronaut.security.token.cookie]
+enabled = true
+cookie-same-site = 'Lax'
+cookie-http-only = true
+cookie-path = '/'
+
+[micronaut.security.endpoints.login]
+enabled = true
+path = '/api/v1/login'
+
+[micronaut.security.endpoints.logout]
+enabled = true
+path = '/api/v1/logout'
+get-allowed = false
+
+[micronaut.security.redirect]
+login-success = '/'
+login-failure = '/login?error=true'
+logout = '/login'
+
+# ---------------------------------------------------------------------------
+# Persistence. In development and test the URL, username and password are
+# supplied by Micronaut Test Resources, which starts a MySQL container on
+# demand. There is no Docker Compose file in this repository.
+# ---------------------------------------------------------------------------
+[datasources.default]
+db-type = 'mysql'
+dialect = 'MYSQL'
+driver-class-name = 'com.mysql.cj.jdbc.Driver'
+schema-generate = 'NONE'
+
+[flyway.datasources.default]
+enabled = true
+locations = ['classpath:db/migration']
+
+# ---------------------------------------------------------------------------
+# Outbound email. Jakarta Mail over SMTP; Mailpit in development.
+# ---------------------------------------------------------------------------
+[micronaut.email.from]
+email = '${app.emails-from-email}'
+name = '${app.emails-from-name}'
+
+[micronaut.executors.blocking]
+type = 'CACHED'
+virtual = false

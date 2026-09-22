@@ -371,7 +371,11 @@ pyronaut-full-stack-template/
 
 ## 6. `pyproject.toml` (proposed)
 
-Versions below are **verified present on Maven Central** as of this revision.
+Versions below are **verified**. `core.version` and `platform.version` are taken from
+`gradle.properties` in `micronaut-projects/pyronaut` itself — `pyronaut.micronaut.core.version=5.2.3`
+and `pyronaut.micronaut.platform.version=5.1.0` — rather than from "latest on Maven Central", so the
+template builds against the same versions the CLI does. (Maven Central has platform 5.1.5; pinning
+ahead of the CLI is asking for trouble.) The rest are confirmed present on Maven Central.
 
 ```toml
 [project]
@@ -384,7 +388,7 @@ type = "jvm"
 [tool.pyronaut]
 repositories = ["mavenCentral"]
 core.version = "5.2.3"          # latest release; NOT the petclinic's 5.2.0-SNAPSHOT
-platform.version = "5.1.5"      # latest release
+platform.version = "5.1.0"      # matches pyronaut's own gradle.properties
 
 [tool.pyronaut.sources]
 python = "src"
@@ -848,10 +852,16 @@ Now scoped as upstream work rather than a constraint (§9.1, §12).
 
 ### 11.4 Pyronaut CLI release availability — **medium**
 
-`core.version = 5.2.3` and `platform.version = 5.1.5` are confirmed on Maven Central, and
-`micronaut-views-react` 6.2.0 is the current release. What is *not* yet confirmed is which
-`pyronaut` CLI version on PyPI is compatible with core 5.2.3, and whether the native launcher
-releases are public yet (§10). Confirm before Phase 1.
+**Confirmed by checking:** `core.version 5.2.3` and `platform.version 5.1.0` are what Pyronaut's own
+`gradle.properties` pins, alongside GraalPy `graalpy3.13-25.3.4.1`. `micronaut-views-react 6.2.0` is
+the current release.
+
+**The CLI is not on PyPI.** `pip install pyronaut` fails with "No matching distribution found" — the
+package does not exist there, despite the install instructions in the Pyronaut README. It is
+published as a wheel on the [releases page](https://github.com/micronaut-projects/pyronaut/releases):
+`v0.0.3` is the latest published (a prerelease) and `v0.0.4` is currently a draft. Until the PyPI
+publish happens, `setup-pyronaut` must be pointed at a wheel URL rather than a version, and this
+template's own instructions cannot say `pip install pyronaut`.
 
 ### 11.5 Compile-time OpenAPI fidelity and emission — **medium**
 
@@ -917,6 +927,7 @@ Known and likely targets:
 | --- | --- | --- | --- |
 | `micronaut-projects/pyronaut` | pytest integration ignores `transactional`, `rollback`, `rebuild_context`; `Sql.Phase.AFTER_ALL` does not run (§9.1) | Issue + PR | **High — committed** |
 | `micronaut-projects/setup-pyronaut` | Action exists only on an unmerged branch; `main` is empty; no `v1` tag (§10) | Merge + tag | **High — blocks CI** |
+| `micronaut-projects/pyronaut` | The CLI is not on PyPI, but the README's install instructions say `pip install pyronaut` (§11.4) | Publish, or correct the docs | **High** |
 | `micronaut-projects/micronaut-views` | No way to render a React view without the hydration client-bundle script — needed for email bodies and any non-hydrating render (§7.5) | Issue + PR | Medium |
 | `micronaut-projects/pyronaut` | GraalJS SSR polyfills (`URL`, `URLSearchParams`, TextEncoder/Decoder, web streams) are hand-rolled per project — the petclinic and this template will duplicate them | Issue: fold into `views-react` or document | Medium |
 | `micronaut-projects/micronaut-views` | React 19 SSR compatibility on GraalJS, if §11.1 finds breakage | Issue + PR | Medium |
