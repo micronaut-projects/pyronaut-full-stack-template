@@ -60,6 +60,10 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   The server-render bundle is therefore resolved by file path in
   `tests-config/application-test.toml`. Delete that override when the bug is
   fixed — it exists for no other reason.
+- **Stay on React 18.** React 19 renders correctly but takes over 300s where React 18 takes 0.20s
+  for the same set of renders (micronaut-views#1198). Suspected cause is the unconditional
+  `web-streams-polyfill` in `webpack.server.cjs`; the experiment is to make it conditional on
+  `globalThis.ReadableStream` being absent and re-time. Not yet run.
 - **`npm run build` before `pyronaut dev`.** The bundles are gitignored, so a
   fresh clone has none and every server-rendered route returns 500.
 - **Killing `pyronaut dev` leaves stale Test Resources state.** The next start

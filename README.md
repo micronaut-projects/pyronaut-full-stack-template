@@ -108,10 +108,14 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
 - **Native image is deferred.** GraalJS is not supported inside a native image and server-side
   rendering needs it, so the first cut targets the JVM ([PLAN.md §4.4](./PLAN.md)). Everything
   else is kept native-friendly — no JNI dependencies — so the switch stays a build flag.
-- **No Vite HMR.** Server rendering means `pyronaut dev` plus a webpack watcher, which is a real
-  developer-experience regression against upstream's Vite setup.
-- **The frontend is React 18, not 19.** That is the configuration proven to server-render on
-  GraalJS; the modern stack is staged in [PLAN.md](./PLAN.md).
+- **No Vite HMR.** Server rendering means `pyronaut dev` plus a webpack watcher: a rebuild and a
+  manual refresh on every change, losing component state, against Vite's sub-100ms in-place module
+  swap. Raised as [micronaut-views#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197).
+- **The frontend is React 18, not 19.** React 19 renders correctly but is about three orders of
+  magnitude slower — 0.20s versus over 300s for the same 11 renders — which is filed as
+  [micronaut-views#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198). The suspected cause is the
+  `web-streams-polyfill` that the bundler configuration applies unconditionally. The rest of the
+  modern stack is staged in [PLAN.md](./PLAN.md).
 - **Throughput and startup are unmeasured.** The concurrency argument — GraalPy context pooling
   instead of a worker fleet — is inherited from the design and has not been benchmarked here.
   Treat it as a claim to test, not a result.
