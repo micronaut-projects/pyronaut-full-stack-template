@@ -12,8 +12,7 @@ migration ahead of ``StartupEvent``.
 import logging
 
 from jakarta.inject import Singleton
-from micronaut.context.event import ApplicationEventListener
-from micronaut.runtime.event import StartupEvent
+from micronaut.context.event import ApplicationEventListener, StartupEvent
 
 from .config import AppConfig
 from .dto import UserCreate
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 @Singleton
-class FirstSuperuserBootstrap(ApplicationEventListener):
+class FirstSuperuserBootstrap(ApplicationEventListener[StartupEvent]):
     def __init__(self, users: UserService, config: AppConfig):
         self.users = users
         self.config = config

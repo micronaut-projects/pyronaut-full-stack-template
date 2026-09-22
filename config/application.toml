@@ -10,7 +10,11 @@ name = 'pyronaut-full-stack-template'
 # ---------------------------------------------------------------------------
 [app]
 name = 'Pyronaut Full Stack Project'
-secret-key = 'changethis'
+# HS256 signing requires at least 256 bits of key material, so this placeholder
+# is long enough to boot with. It is still a placeholder: AppConfigGuard refuses
+# to start outside development while it is unchanged. Generate a real one with
+#   python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+secret-key = 'changethis-changethis-changethis-changethis'
 first-superuser = 'admin@example.com'
 first-superuser-password = 'changethis'
 frontend-host = 'http://localhost:8080'
@@ -42,7 +46,7 @@ paths = ['file:static']
 authentication = 'cookie'
 
 [micronaut.security.token.jwt.signatures.secret.generator]
-secret = '${app.secret-key}'
+secret = 'changethis-changethis-changethis-changethis'
 jws-algorithm = 'HS256'
 
 [micronaut.security.token.generator.access-token]
@@ -86,9 +90,29 @@ locations = ['classpath:db/migration']
 # ---------------------------------------------------------------------------
 # Outbound email. Jakarta Mail over SMTP; Mailpit in development.
 # ---------------------------------------------------------------------------
+# Literal values, not ${app.emails-from-email} placeholders.
+#
+# While Micronaut Test Resources is active its property resolver wraps every
+# lookup, and resolving a placeholder re-enters that resolver, which resolves
+# properties of its own, and so on until the stack overflows (or the HTTP call
+# to the Test Resources server fails with an IOException, depending on timing).
+# Beans created lazily on the first request — which is when the mail beans are
+# built — hit this; beans created during startup do not.
+#
+# Override in deployment with MICRONAUT_EMAIL_FROM_EMAIL / MICRONAUT_EMAIL_FROM_NAME.
 [micronaut.email.from]
-email = '${app.emails-from-email}'
-name = '${app.emails-from-name}'
+email = 'info@example.com'
+name = 'Pyronaut Full Stack Project'
+
+# Jakarta Mail transport. These must exist in every environment: an unresolved
+# property here is looked up through Test Resources, whose client resolves
+# properties of its own, and the two recurse until the stack overflows. The dev
+# and test environments override the host and port to point at Mailpit.
+[javamail.properties]
+'mail.smtp.host' = 'localhost'
+'mail.smtp.port' = '1025'
+'mail.smtp.auth' = 'false'
+'mail.smtp.starttls.enable' = 'false'
 
 [micronaut.executors.blocking]
 type = 'CACHED'

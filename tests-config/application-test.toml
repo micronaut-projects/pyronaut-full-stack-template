@@ -14,7 +14,7 @@ driver-class-name = 'com.mysql.cj.jdbc.Driver'
 schema-generate = 'NONE'
 
 [app]
-secret-key = 'test-secret-key-that-is-long-enough-for-hmac-sha256'
+secret-key = 'test-secret-key-that-is-long-enough-for-hmac-sha256-abcdef'
 first-superuser = 'admin@example.com'
 first-superuser-password = 'testpassword123'
 frontend-host = 'http://localhost:8080'

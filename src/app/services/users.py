@@ -9,11 +9,12 @@ or by the startup bootstrap.
 from java.util import UUID
 from jakarta.inject import Singleton
 from jakarta.transaction import Transactional
+from micronaut.data.model import Page, Pageable
 
 from ..dto import UserCreate, UserRegister, UserUpdate, UserUpdateMe
 from ..entities import User
 from ..repositories import UserRepository
-from ..security.passwords import PasswordHasher
+from ..passwords import PasswordHasher
 
 
 class EmailAlreadyUsed(Exception):
@@ -35,6 +36,14 @@ class UserService:
 
     def count(self) -> int:
         return int(self.users.count())
+
+    def page(self, pageable: Pageable) -> Page[User]:
+        """One page of users, newest first, with the total count attached."""
+        return self.users.findAllOrdered(pageable)
+
+    def verify_password(self, user: User, password: str) -> bool:
+        """Check a password against a user's stored hash, without side effects."""
+        return self.passwords.verify(password, user.hashedPassword)
 
     # -- authentication ---------------------------------------------------
     @Transactional

@@ -14,6 +14,14 @@ migration.
 
 See PLAN.md section 7.3, and the Micronaut guide "Building a REST API —
 Spring Boot vs Micronaut: Security Basic Auth", which uses the same pairing.
+
+This lives at the top level rather than in ``app/security/`` on purpose.
+Pyronaut generates a package ``__init__.py`` that eagerly imports every module
+in the package, so ``app.services`` importing anything from ``app.security``
+would drag in ``app.security.provider``, which imports ``app.services.users``
+right back — a circular import at startup. Keeping the hasher outside the
+security package makes the dependency one-directional: security depends on
+services, never the reverse.
 """
 
 from jakarta.inject import Singleton
