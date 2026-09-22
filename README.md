@@ -4,9 +4,10 @@ A port of [`fastapi/full-stack-fastapi-template`](https://github.com/fastapi/ful
 to [Pyronaut](https://github.com/micronaut-projects/pyronaut): the same application, written in the
 same language, with fewer moving parts.
 
-> **Status: under construction.** The frontend builds, renders and is tested. The Python and JVM
-> side is written but not yet compiled or run — see [Current state](#current-state). The full design
-> and its open questions are in [PLAN.md](./PLAN.md).
+> **Status: working, incomplete.** The application runs, and `pyronaut test` is green: 35 tests
+> across the API and a real browser. The frontend is a deliberately plain React 18 stack — see
+> [Current state](#current-state) for what is still missing. The full design and its open questions
+> are in [PLAN.md](./PLAN.md).
 
 - 🐍 **Python** application code on the Micronaut programming model, running on GraalPy.
 - 🗄️ **[Micronaut Data JDBC](https://micronaut-projects.github.io/micronaut-data/latest/guide/)**
@@ -86,6 +87,18 @@ pyronaut test
 One command runs the pytest API suite and the JUnit Playwright suite in the same session, against
 the same embedded server, with MySQL and Mailpit supplied by containers.
 
+`pyronaut test` needs a GraalPy virtual environment with pytest in it:
+
+```bash
+graalpy -m venv .venv
+.venv/bin/python -m pip install --upgrade pip pytest
+```
+
+The browser suite is worth the setup. It has already caught four bugs that the API tests and `curl`
+could not see, because in each case the server-rendered HTML was correct and the application was
+broken underneath it — including static assets answering 401, so pages rendered perfectly and never
+hydrated.
+
 ## Project layout
 
 ```
@@ -105,15 +118,29 @@ Generated bundles, `__pyronaut__/`, `.micronaut/` and `node_modules/` are not co
 
 | Area | State |
 | --- | --- |
-| Frontend build, unit tests, SSR smoke check | **Working and verified** — `npm run check` is green |
-| React email templates | **Working and verified** — rendered and asserted on |
-| Python application code | **Written, not yet compiled.** Needs GraalVM 25, the `pyronaut` CLI and Docker |
-| API controllers | Not written yet |
-| pytest and Playwright suites | Not written yet |
-| CI | Not written yet — no Actions minutes until 1 October |
+| API — users, items, login, recovery, utils | **Working.** 28 pytest tests against a real MySQL |
+| Authentication | **Working.** JWT in an HttpOnly cookie, roles, first-superuser bootstrap |
+| Server-rendered React and hydration | **Working.** 7 Playwright tests drive a real browser |
+| React email templates | **Working.** Rendered on GraalJS, asserted through Mailpit |
+| Compile-time OpenAPI and the TypeScript client | **Working.** `npm run generate-client` needs no running server |
+| Frontend stack | React 18, webpack, react-router — deliberately the configuration proven to server-render on GraalJS. Tailwind, shadcn/ui, React 19 and TanStack Router are [PLAN.md](./PLAN.md) Stage B |
+| CI | Written, **never run** — no Actions minutes until 1 October, and `setup-pyronaut` has no `v1` tag yet |
+| Native image | Deferred. GraalJS is not supported inside a native image and SSR needs it; see [PLAN.md §4.4](./PLAN.md) |
+
+```
+$ pyronaut test
+35 tests passed in 1m 17s
+```
 
 The `pyronaut` CLI is not on PyPI yet; it is published as a wheel on the
 [Pyronaut releases page](https://github.com/micronaut-projects/pyronaut/releases).
+
+Three bugs found during this port are filed upstream:
+[#166](https://github.com/micronaut-projects/pyronaut/issues/166) (POM-only dependencies cannot be
+declared), [#168](https://github.com/micronaut-projects/pyronaut/issues/168) (Swagger annotations do
+not reach the OpenAPI document) and
+[#169](https://github.com/micronaut-projects/pyronaut/issues/169) (`additional-resources` is missing
+from the test classpath).
 
 ## Deployment
 
