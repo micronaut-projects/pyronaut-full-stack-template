@@ -32,6 +32,14 @@ class AppConfig:
     emails_from_name: str = "Pyronaut Full Stack Project"
     email_reset_token_expire_hours: Annotated[int, Min(1)] = 48
 
+    # SMTP. Read by mail_session.ConfiguredSessionProvider rather than by
+    # Micronaut Email's own `javamail.properties` binding — see that module for
+    # why. Defaults point at a local Mailpit.
+    smtp_host: str = "localhost"
+    smtp_port: Annotated[int, Min(1)] = 1025
+    smtp_user: str = ""
+    smtp_tls: bool = False
+
 
 DEFAULT_SECRETS = ("secret_key", "first_superuser_password")
 

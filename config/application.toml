@@ -22,6 +22,13 @@ emails-from-email = 'info@example.com'
 emails-from-name = 'Pyronaut Full Stack Project'
 email-reset-token-expire-hours = 48
 
+# SMTP. The defaults point at a local Mailpit:
+#   docker run --rm -p 1025:1025 -p 8025:8025 axllent/mailpit
+smtp-host = 'localhost'
+smtp-port = 1025
+smtp-user = ''
+smtp-tls = false
+
 # ---------------------------------------------------------------------------
 # Server-rendered React. One bundle holds every render root: the `App` page
 # tree and the transactional email components.
@@ -104,15 +111,6 @@ locations = ['classpath:db/migration']
 email = 'info@example.com'
 name = 'Pyronaut Full Stack Project'
 
-# Jakarta Mail transport. These must exist in every environment: an unresolved
-# property here is looked up through Test Resources, whose client resolves
-# properties of its own, and the two recurse until the stack overflows. The dev
-# and test environments override the host and port to point at Mailpit.
-[javamail.properties]
-'mail.smtp.host' = 'localhost'
-'mail.smtp.port' = '1025'
-'mail.smtp.auth' = 'false'
-'mail.smtp.starttls.enable' = 'false'
 
 [micronaut.executors.blocking]
 type = 'CACHED'
