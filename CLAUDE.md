@@ -56,10 +56,12 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   the cause: annotation metadata lives in the bean definition rather than in
   the generated source, which is how `@Controller` and `@Secured` reach the
   runtime.
-- **`additional-resources` does not reach the test classpath** (pyronaut#169).
-  The server-render bundle is therefore resolved by file path in
-  `tests-config/application-test.toml`. Delete that override when the bug is
-  fixed — it exists for no other reason.
+- **JUnit tests run against the system classloader** (pyronaut#169), so no
+  project resource directory is reachable from them — not `views`, not
+  `config`. Anything resolving `classpath:` breaks there while the identical
+  pytest resolves fine. The server-render bundle is therefore resolved by file
+  path in `tests-config/application-test.toml`; delete that override when the
+  bug is fixed.
 - **Stay on React 18.** React 19 renders correctly but takes over 300s where React 18 takes 0.20s
   for the same set of renders (micronaut-views#1198). Suspected cause is the unconditional
   `web-streams-polyfill` in `webpack.server.cjs`; the experiment is to make it conditional on

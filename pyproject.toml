@@ -36,13 +36,11 @@ test-resources = 'tests-config'
 # `views` holds the generated server-render bundle, `static` the generated
 # hydration bundle and the assets served from /static/**.
 additional-resources = ['views', 'static']
-# Listed for tests too. This does not currently have the intended effect —
-# the directories still do not reach the test classpath — so the test
-# configuration resolves the bundle by file path instead; see
-# tests-config/application-test.toml and https://github.com/micronaut-projects/pyronaut/issues/169.
-# Kept here so that it starts working, and the override can be deleted, as
-# soon as the bug is fixed.
-additional-test-resources = ['views', 'static']
+# `views` and `static` are not repeated under `additional-test-resources`:
+# `additional-resources` already reaches the test classpath correctly. What
+# does not work is JUnit tests seeing that classpath at all — see
+# https://github.com/micronaut-projects/pyronaut/issues/169 and the override in
+# tests-config/application-test.toml.
 
 [tool.pyronaut.test]
 # pytest owns the API suite; JUnit owns the Playwright end-to-end suite.
