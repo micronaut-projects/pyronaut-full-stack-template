@@ -39,6 +39,89 @@ exist here.
 | A running app import to produce `openapi.json` | a build artifact | OpenAPI is generated during `pyronaut process`. |
 | React Email as a separate workspace compiled to Jinja | `frontend/emails/*.jsx` in the same bundle | Rendered by the GraalJS engine that renders the pages. |
 
+## What this port actually bought
+
+The claims below are things that changed during the port, not predictions. Where a claim is
+inherited from the design rather than demonstrated, it says so.
+
+### Fewer things to run, and fewer to get wrong
+
+Upstream's local stack is five containers across three Compose files, plus a Vite dev server.
+Here there is no Compose file at all: MySQL arrives because `micronaut-data-jdbc` and a Test
+Resources module are declared, and Mailpit because a test asks for it. Services are a
+**dependency**, not a YAML file someone has to keep in step with the code.
+
+The same applies to lifecycle. Upstream has five shell scripts — `prestart.sh`, `test.sh`,
+`tests-start.sh`, `format.sh`, `lint.sh` — and Alembic's `env.py`, `script.py.mako` and
+`alembic.ini`. Here migrations are SQL files Flyway finds, seeding is a `StartupEvent` listener,
+and the lifecycle is `pyronaut test` / `pyronaut build`.
+
+### The whole test suite is one command, and it is real
+
+```
+$ pyronaut test
+35 tests passed in 1m 17s
+```
+
+28 API tests and 7 browser tests, in one run, against one embedded server, with a real MySQL and
+a real Mailpit. Upstream runs Playwright separately against a Vite server with
+`PLAYWRIGHT_BASE_URL` plumbing to connect the two.
+
+The email tests are the clearest illustration: trigger a password reset, let Micronaut Email send
+it, read the delivered message back out of Mailpit, extract the link from the rendered HTML, use
+it, and confirm the old password stops working. Upstream does not assert on its email at all.
+
+### OpenAPI is a build artifact, not a running-app artifact
+
+Upstream obtains its OpenAPI document by importing and constructing the application:
+
+```bash
+uv run python -c "import app.main; import json; print(json.dumps(app.main.app.openapi()))"
+```
+
+That needs a working Python environment, a loadable app and valid configuration. Here
+`pyronaut process` writes the document while compiling, from the route decorators and the
+`@Serdeable` dataclasses. Generating the TypeScript client needs no server, no database and no
+configuration — which is what makes the CI drift check in `.github/workflows/ci.yml` cheap enough
+to run on every build.
+
+Python docstrings become the documentation: first sentence to `summary`, the rest to
+`description`.
+
+### Mistakes surface at build time that would otherwise surface in production
+
+`pyronaut process` fails on an unresolvable annotation, a bad generic or a repository method name
+it cannot parse into SQL. `pyronaut validate-config` refused a change during this port because
+removing a redirect left a required property unset — before anything started.
+
+This is the compile-time DI argument made concrete, and it is the clearest structural difference
+from the runtime-wiring model.
+
+### One VM for Python and JavaScript
+
+GraalPy and GraalJS run in the same JVM. The React pages and the transactional emails render
+through the same engine, from the same bundle — so the email templates need no separate React
+Email workspace and no build step producing Jinja. Node is a bundler, absent from production.
+
+### Honest limitations
+
+- **Native image is deferred.** GraalJS is not supported inside a native image and server-side
+  rendering needs it, so the first cut targets the JVM ([PLAN.md §4.4](./PLAN.md)). Everything
+  else is kept native-friendly — no JNI dependencies — so the switch stays a build flag.
+- **No Vite HMR.** Server rendering means `pyronaut dev` plus a webpack watcher, which is a real
+  developer-experience regression against upstream's Vite setup.
+- **The frontend is React 18, not 19.** That is the configuration proven to server-render on
+  GraalJS; the modern stack is staged in [PLAN.md](./PLAN.md).
+- **Throughput and startup are unmeasured.** The concurrency argument — GraalPy context pooling
+  instead of a worker fleet — is inherited from the design and has not been benchmarked here.
+  Treat it as a claim to test, not a result.
+
+Three bugs in the surrounding toolchain were found and filed during the port
+([#166](https://github.com/micronaut-projects/pyronaut/issues/166),
+[#168](https://github.com/micronaut-projects/pyronaut/issues/168),
+[#169](https://github.com/micronaut-projects/pyronaut/issues/169)), which is itself worth
+weighing: this is a younger stack than FastAPI's, and a port of this size surfaces rough edges.
+
 ## Requirements
 
 - A JVM Pyronaut SDK and the `pyronaut` CLI
@@ -102,6 +185,7 @@ hydrated.
 ## Project layout
 
 ```
+.agents/skills/ Agent skills: pyronaut, server-rendered-react, testing
 src/            Python application sources
 src-java/       Java sources, compiled into the same DI container (currently empty)
 config/         application.toml and the Flyway migrations

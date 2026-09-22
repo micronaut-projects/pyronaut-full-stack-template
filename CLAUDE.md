@@ -144,6 +144,18 @@ navigation. Identity changes belong to the server in an SSR-first app;
 reconstructing the authenticated shell on the client is what caused three of
 the four bugs above.
 
+## Agent skills
+
+`.agents/skills/` holds three skills distilled from this port, following the conventions in
+`micronaut-projects/micronaut-starter`:
+
+- **pyronaut** — writing and debugging Pyronaut code, and the constructs that fail silently.
+- **server-rendered-react** — adding screens without falling into the SSR/hydration trap below.
+- **testing** — pytest, Playwright-from-Python, and services via Test Resources/Testcontainers.
+
+They overlap this file deliberately: this file is the project's own context, the skills are
+portable to any Pyronaut project. Keep them in step when a hard-won lesson is added here.
+
 ## Where the patterns come from
 
 When unsure how something is expressed in Pyronaut, check these before guessing:
