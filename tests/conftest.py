@@ -18,19 +18,56 @@ Tracking: https://github.com/micronaut-projects/pyronaut/issues (see PLAN.md §9
 import uuid
 
 import pytest
+from org.testcontainers.containers import GenericContainer
+from org.testcontainers.containers.wait.strategy import Wait
+from org.testcontainers.utility import DockerImageName
 from pyronaut import requests
 from pyronaut.test import MicronautTest, micronaut_test_fixture
 
 SUPERUSER_EMAIL = "admin@example.com"
 SUPERUSER_PASSWORD = "testpassword123"
 
+MAILPIT_IMAGE = "axllent/mailpit"
+MAILPIT_SMTP_PORT = 1025
+MAILPIT_HTTP_PORT = 8025
+
+
+@pytest.fixture(scope="session")
+def mailpit():
+    """Mailpit, started once for the whole session.
+
+    MySQL comes from Micronaut Test Resources, which has a module for it.
+    Mailpit does not, so it is started here with Testcontainers — driven from
+    Python, against the Java Testcontainers API. Either way there is no Docker
+    Compose file: the test that needs a service starts it.
+
+    Yields the properties the application needs to reach it.
+    """
+    container = (
+        GenericContainer(DockerImageName.parse(MAILPIT_IMAGE))
+        .withExposedPorts(MAILPIT_SMTP_PORT, MAILPIT_HTTP_PORT)
+        .waitingFor(Wait.forHttp("/").forPort(MAILPIT_HTTP_PORT))
+    )
+    container.start()
+    host = str(container.getHost())
+    try:
+        yield {
+            "app.smtp-host": host,
+            "app.smtp-port": str(container.getMappedPort(MAILPIT_SMTP_PORT)),
+            "micronaut.http.services.mailpit.url": (
+                f"http://{host}:{container.getMappedPort(MAILPIT_HTTP_PORT)}"
+            ),
+        }
+    finally:
+        container.stop()
+
 
 @pytest.fixture
-def application_context(request):
-    """A running application, with MySQL from Test Resources."""
+def application_context(request, mailpit):
+    """A running application, with MySQL from Test Resources and Mailpit alongside."""
     fixture = micronaut_test_fixture(
         request,
-        MicronautTest(environments=["test"], transactional=False),
+        MicronautTest(environments=["test"], transactional=False, properties=mailpit),
     )
     yield fixture
     fixture.stop()
