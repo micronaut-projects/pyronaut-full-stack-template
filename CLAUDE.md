@@ -83,7 +83,7 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
 | GraalVM 25+ | Pyronaut's toolchain minimum |
 | GraalPy `graalpy3.13-25.3.4.1` | Pinned in pyronaut's own `gradle.properties` |
 | The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.3`) |
-| Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers. On Podman, Ryuk cannot bind-mount the machine's API socket (`operation not supported`) — set `ryuk.disabled = true` in `~/.testcontainers.properties` |
+| Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers. On Podman, Ryuk cannot bind-mount the machine's API socket (`operation not supported`), which fails only the Mailpit test — run with `TESTCONTAINERS_RYUK_DISABLED=true`. The `ryuk.disabled` property in `~/.testcontainers.properties` is **not** honoured by Testcontainers 2.x; only the environment variable works |
 | Node.js 22 + npm | Bundling only — not needed at runtime |
 
 The cloud session this repository was scaffolded in had none of the first four,
