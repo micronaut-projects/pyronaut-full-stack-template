@@ -28,8 +28,9 @@ Success criteria, in priority order:
    the transactional emails. No separate frontend container, no reverse proxy needed to glue them.
 5. **Compile-time OpenAPI.** The API description is a build artifact produced by
    `pyronaut process`, not something obtained by importing and starting the app (§8.2).
-6. **A credible performance story.** Native image startup and memory numbers, and a concurrency
-   story that does not depend on running N worker processes (§4.3).
+6. **A credible performance story.** A concurrency story that does not depend on running N worker
+   processes (§4.3), and JVM throughput numbers against the same application on FastAPI. Native
+   image startup and memory numbers are *not* part of the first cut — see §4.4.
 7. **The showcase is legible.** A reader should be able to open one file and see why the Micronaut
    version is better, not have to take our word for it.
 8. **Every gap found becomes an upstream fix.** This port is a forcing function for the wider
@@ -47,7 +48,7 @@ Success criteria, in priority order:
 | The JVM ecosystem, one import away | MySQL JDBC, Flyway, Jakarta Mail, Playwright, Testcontainers, Spring Security Crypto — all `pip`-free imports. |
 | Server-side React without Node in production | Micronaut Views React runs the SSR bundle on GraalJS inside the same JVM — for **pages and emails alike** (§7.5). Node is a build-time dependency only. |
 | Real integration tests, no Compose | Test Resources starts MySQL; Testcontainers starts Mailpit. `pyronaut test` is the whole command. |
-| Native image | `pyronaut build --native --docker` produces a container that starts in milliseconds. |
+| Fast, honest packaging | `pyronaut build --jvm --docker` writes the Dockerfile and produces one image that serves API, SSR and email. Native image is deferred until GraalJS supports it (§4.4). |
 | Compile-time OpenAPI | The API description falls out of `pyronaut process` as a build artifact — no app import, no running server, and contract breakage fails the build (§8.2). |
 | One VM, two languages | GraalPy and GraalJS in the same JVM. Development runs one process; production ships no Node (§1.2). |
 | Radical subtraction | No Compose files, no reverse proxy, no separate frontend container, no migration scaffolding, no shell lifecycle scripts (§1.2). |
@@ -265,6 +266,46 @@ that must be designed for, not discovered:
 workers behind Traefik; we run one process with N GraalPy contexts and real parallelism. The
 README should show this concretely (a CPU-bound endpoint under load, FastAPI vs. Pyronaut, same
 machine).
+
+### 4.4 Runtime and packaging: JVM first, native later
+
+**Constraint:** GraalJS is not yet supported inside a GraalVM native image. Since server-side React
+rendering is the whole point of the view layer, and it runs on GraalJS, **this template targets the
+JVM runtime for its first cut.**
+
+| Packaging format | First cut | Notes |
+| --- | --- | --- |
+| `wheel-jvm` (`pyronaut build --jvm`) | **Yes — default** | The development and distribution format. |
+| `docker-jvm` (`pyronaut build --jvm --docker`) | **Yes — the deployable** | One image serving API, SSR and email. Pyronaut writes the Dockerfile. |
+| Runnable fat JAR | Yes | Free; useful for anyone deploying without containers. |
+| `wheel-native` / `docker-native` | **No** | Blocked on GraalJS in native image. |
+| `wheel-crema` / `docker-crema` | **No, pending verification** | Crema is also a native production runtime, so it is presumed blocked for the same reason. Confirm separately rather than assuming — if Crema *can* host GraalJS, it becomes the first cut's fast-start option. |
+
+Consequences to carry through the rest of the plan:
+
+- **The performance story changes shape.** It is the concurrency story (§4.3) plus JVM throughput,
+  measured against the same application on FastAPI — not millisecond cold starts. That is still a
+  strong result and it is the honest one. Do not put native numbers in the README.
+- **No native build job in CI** (§10), and no reflection-config maintenance burden in the first cut.
+  That removes a real cost: entities, DTOs, the JDBC driver, Angus Mail and Spring Security Crypto
+  would all have needed attention.
+- **Native is planned work, not a dropped feature.** It has its own phase (§13, phase 11), gated on
+  GraalJS support rather than on a date, and it is what the README should say: *native is coming,
+  here is what it is waiting on.*
+- **Design for native anyway, at zero cost.** Everything already chosen is native-friendly —
+  compile-time DI, build-time serializers and validators, a pure-Java password encoder with no JNI
+  (§7.3). The only thing standing between this template and a native build is GraalJS. Keep it that
+  way: reject a dependency that would add a *second* native blocker, because the day GraalJS lands
+  we want the switch to be one flag.
+- **Say so in the README.** A template that quietly omits native invites the question; a template
+  that states the constraint, names the blocker, and shows the work already done to be ready for it
+  is more credible than one that claims a native build it cannot demonstrate.
+
+**An option considered and not recommended:** an API-only build profile excluding `views-react`
+*could* go native today, since the JSON controllers themselves have no GraalJS dependency. That
+would demonstrate native startup — but it means maintaining a second profile, a second set of
+reflection config, and a variant of the template with half its features. Not worth it for a
+showcase. Revisit only if a native demo becomes a hard requirement before GraalJS support lands.
 
 ---
 
@@ -754,13 +795,14 @@ jobs:
       - run: pyronaut install
       - run: pyronaut process
       - run: pyronaut test     # pytest API suite + JUnit Playwright suite
+      - run: pyronaut build --jvm --docker
 ```
 
 Notes:
 - The bundle build **must** precede `pyronaut test` — SSR routes and email templates both fail
   without `views/ssr-components.mjs`.
 - Add a Playwright browser cache step once §10.2 settles the cache path.
-- A second, nightly job for `pyronaut build --native --docker` to keep the native story honest.
+- **No native build job** — GraalJS is not supported in native image yet (§4.4). Add one when it is.
 - No `docker compose` job — that is the point.
 - **Local validation in the meantime:** run the same command sequence in a clean container, and use
   `act` or a scratch repository with minutes if one is available. Treat the workflow as unverified
@@ -838,10 +880,11 @@ contribution to `micronaut-views` rather than a blocker.
 | Dev-only `/private` routes | `@Requires(env="dev")` — straightforward |
 | CORS / `FRONTEND_HOST` | Largely moot under same-origin SSR; still needed if anyone splits the deployment |
 | Sentry integration | Upstream has it; **recommend dropping** and noting it, rather than pulling in the Sentry Java SDK |
+| Crema packaging | Presumed blocked with native, but unverified — worth a cheap check, since it would restore a fast-start story (§4.4) |
 | FastAPI Cloud deployment | Upstream's primary deployment path has no analogue. Replace with the container story; do not pretend to match it |
 | Adminer / Traefik | Dropped by design (Test Resources; single deployable). Document the rationale |
 | Deployment docs | Upstream ships Compose + Traefik + Let's Encrypt guides. We need an equivalent for a container built by `pyronaut build --docker`. Non-trivial writing effort, easy to underestimate |
-| Native image reflection config | The petclinic ships `reflect-config.json`/`resource-config.json`. Entities, DTOs, JDBC driver, Angus Mail and Spring Security Crypto all need attention if native is a supported target |
+| Native image | Deferred: GraalJS is not supported in native image (§4.4). The petclinic ships `reflect-config.json`/`resource-config.json`; we skip that work for now, and keep every *other* choice native-ready so the eventual switch is one flag |
 | Frontend tooling split | Upstream uses Bun + Biome + Vite; the petclinic uses npm + webpack. Pick one and be consistent — proposed: npm + webpack + Biome |
 | Dark mode, appearance settings | Upstream has them; parity requires porting onto whatever CSS approach Stage A picks |
 
@@ -856,6 +899,7 @@ contribution to `micronaut-views` rather than a blocker.
 | Playwright approach unspecified | **Playwright JUnit 5 extension + Pyronaut JUnit Python modules** (§9.2) |
 | Transactional pytest gap "worth filing" | **In scope as an upstream fix** (§9.1, §12) |
 | `setup-pyronaut` blocking CI | CI prepared, deliberately unrun until 1 Oct (§10) |
+| Native image an assumed deliverable | **Deferred** — GraalJS is not supported in native image; JVM runtime for the first cut (§4.4) |
 | Can Python implement Java interfaces? | Yes — `micronaut-security/test-suite-python` proves it |
 
 ---
@@ -878,6 +922,8 @@ Known and likely targets:
 | `micronaut-projects/micronaut-views` | React 19 SSR compatibility on GraalJS, if §11.1 finds breakage | Issue + PR | Medium |
 | `micronaut-projects/pyronaut` | OpenAPI output fidelity for `@Serdeable` dataclasses and `@Secured` security schemes; a command to write `openapi.json` to disk (§11.5) | Issue | Medium |
 | `micronaut-projects/pyronaut` | Whatever the Playwright spike turns up — Java overload resolution, functional-interface conversion from Python callables, enum handling (§11.2) | Issue(s) | Medium |
+| GraalVM / `micronaut-views` | GraalJS support inside a native image — the one thing blocking a native build of this template (§4.4). Track it; re-test each GraalVM release | Track upstream | Medium |
+| `micronaut-projects/pyronaut` | Whether Crema can host GraalJS, and if not, what it would take | Question | Low |
 | `micronaut-projects/micronaut-email` | Mailpit is started by hand with a Testcontainers `GenericContainer`; a Test Resources provider would make this one line | Feature request | Low |
 | `micronaut-projects/micronaut-data` | Anything found around UUID primary keys on MySQL (§7.1) | Issue | Low |
 | `micronaut-projects/micronaut-guides` | A guide derived from this template, once it works | Contribution | Low |
@@ -900,11 +946,14 @@ end of the project.
 | **6. E2E** | Playwright Java suite covering upstream's specs (login, signup, reset, items, user settings, admin), `engine = "both"` | Suite green locally |
 | **7. Upstream fixes** | Land the pytest transactional work and the other committed items in §12; remove the template's temporary workarounds | Workaround fixtures deleted; template runs on released upstream |
 | **8. CI** | `setup-pyronaut` workflow committed and reviewed; first real run once minutes are available on 1 Oct; native build job | Green on a clean runner, twice (cache hit) |
-| **9. Packaging & docs** | `pyronaut build --docker` / `--native --docker`, README leading with the simplification ledger (§1.2) and the measured numbers, the API-improvement rationale (§1.3), deployment guide, template-repository setup | A reader can use the template, run it, and deploy it |
+| **9. Packaging & docs** | `pyronaut build --jvm --docker` (native deferred, §4.4), README leading with the simplification ledger (§1.2) and the measured numbers, the API-improvement rationale (§1.3), deployment guide, template-repository setup | A reader can use the template, run it, and deploy it |
 | **10. Stage B** | Tailwind v4 → shadcn → React 19 → TanStack Router, each gated on its spike | Shipped incrementally; none is a release blocker |
+| **11. Native** | Planned, not dropped (§4.4). Gated on GraalJS support in native image: re-test each GraalVM release, then add the reflection config, the `--native --docker` build and the CI job, and publish the startup and memory numbers | `pyronaut build --native --docker` produces a working image, and the README's performance section gains its cold-start figures |
 
 Phase 0 is not optional. Two of its four questions can still change the shape of a requirement.
-Phases 1–6 do not depend on CI and should proceed regardless of the October date.
+Phases 1–6 do not depend on CI and should proceed regardless of the October date. Phase 11 has no
+date: it unblocks when GraalJS does, and the work in phases 1–9 is deliberately arranged so that
+when it does, the change is a build flag and a reflection config — not a redesign.
 
 ---
 
@@ -918,7 +967,9 @@ Reduced from revision 1; the rest have been settled above.
 3. **Login endpoint:** adopt Micronaut Security's `/login` shape, or emulate FastAPI's OAuth2 form
    endpoint for drop-in client compatibility?
 4. **UUID primary keys:** `CHAR(36)` for readability, or `BINARY(16)` for efficiency?
-5. **Native image: supported target or demo?** Full support means maintaining reflection config for
-   Angus Mail, the JDBC driver and Spring Security Crypto.
+5. **Is deferring native acceptable for the first cut?** GraalJS does not work in native image, and
+   SSR needs GraalJS (§4.4). The recommendation is to ship JVM-only, say so plainly, and keep every
+   other choice native-ready. The alternative — a second API-only profile that *can* go native — is
+   not recommended.
 6. **Scope of deployment docs** — upstream leads with FastAPI Cloud and falls back to Traefik +
    Let's Encrypt. How much do we replace versus simply drop?
