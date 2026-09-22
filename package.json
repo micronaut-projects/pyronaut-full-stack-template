@@ -20,7 +20,7 @@
     "web-streams-polyfill": "4.2.0"
   },
   "devDependencies": {
-    "@babel/core": "7.28.0",
+    "@babel/core": "7.29.7",
     "@babel/preset-env": "7.28.0",
     "@babel/preset-react": "7.27.1",
     "@biomejs/biome": "2.5.6",
