@@ -18,3 +18,18 @@ secret-key = 'test-secret-key-that-is-long-enough-for-hmac-sha256-abcdef'
 first-superuser = 'admin@example.com'
 first-superuser-password = 'testpassword123'
 frontend-host = 'http://localhost:8080'
+
+# The server-render bundle, by file path rather than classpath.
+#
+# `additional-resources = ['views', 'static']` puts the generated bundle on the
+# classpath for `pyronaut dev` and `pyronaut run`, but not for `pyronaut test`,
+# so `classpath:ssr-components.mjs` is not found and every page route answers
+# 500 with "ssr-components.mjs could not be found". Adding the same
+# directories to `additional-test-resources` does not change it.
+#
+# Resolving by file works because tests run from the project root, and it
+# mirrors how the static assets are already served (`paths = ['file:static']`
+# in application.toml). Production packaging keeps the classpath form.
+[micronaut.views.react]
+server-bundle-path = 'file:views/ssr-components.mjs'
+client-bundle-url = '/static/client.js'

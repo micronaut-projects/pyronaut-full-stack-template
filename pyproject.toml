@@ -36,6 +36,11 @@ test-resources = 'tests-config'
 # `views` holds the generated server-render bundle, `static` the generated
 # hydration bundle and the assets served from /static/**.
 additional-resources = ['views', 'static']
+# Also listed for tests. The documentation says `additional-resources` covers
+# "run, test, JVM wheel, and Docker packaging flows", but without this the
+# server-render bundle is absent from the test classpath and every page route
+# 500s with "ssr-components.mjs could not be found".
+additional-test-resources = ['views', 'static']
 
 [tool.pyronaut.test]
 # pytest owns the API suite; JUnit owns the Playwright end-to-end suite.
