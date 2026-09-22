@@ -120,11 +120,13 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
   instead of a worker fleet — is inherited from the design and has not been benchmarked here.
   Treat it as a claim to test, not a result.
 
-Three bugs in the surrounding toolchain were found and filed during the port
-([#166](https://github.com/micronaut-projects/pyronaut/issues/166),
-[#168](https://github.com/micronaut-projects/pyronaut/issues/168),
-[#169](https://github.com/micronaut-projects/pyronaut/issues/169)), which is itself worth
-weighing: this is a younger stack than FastAPI's, and a port of this size surfaces rough edges.
+Four bugs in the surrounding toolchain were found during the port, three of them now with a fix
+in flight ([pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166) — merged,
+[pyronaut#168](https://github.com/micronaut-projects/pyronaut/issues/168),
+[pyronaut#169](https://github.com/micronaut-projects/pyronaut/issues/169),
+[micronaut-core#13346](https://github.com/micronaut-projects/micronaut-core/issues/13346)), which is
+itself worth weighing: this is a younger stack than FastAPI's, and a port of this size surfaces rough
+edges.
 
 ## Requirements
 
@@ -223,12 +225,17 @@ $ pyronaut test
 The `pyronaut` CLI is not on PyPI yet; it is published as a wheel on the
 [Pyronaut releases page](https://github.com/micronaut-projects/pyronaut/releases).
 
-Three bugs found during this port are filed upstream:
-[#166](https://github.com/micronaut-projects/pyronaut/issues/166) (POM-only dependencies cannot be
-declared), [#168](https://github.com/micronaut-projects/pyronaut/issues/168) (Swagger annotations do
-not reach the OpenAPI document) and
-[#169](https://github.com/micronaut-projects/pyronaut/issues/169) (`additional-resources` is missing
-from the test classpath).
+Bugs found during this port and filed upstream:
+[pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166) (POM-only dependencies
+cannot be declared — fixed, [PR #170](https://github.com/micronaut-projects/pyronaut/pull/170)),
+[pyronaut#168](https://github.com/micronaut-projects/pyronaut/issues/168) (Swagger annotations do not
+reach the OpenAPI document — fix in
+[micronaut-core#13345](https://github.com/micronaut-projects/micronaut-core/pull/13345)),
+[pyronaut#169](https://github.com/micronaut-projects/pyronaut/issues/169) (JUnit tests build their
+context against the system classloader — fix in
+[PR #171](https://github.com/micronaut-projects/pyronaut/pull/171)) and
+[micronaut-core#13346](https://github.com/micronaut-projects/micronaut-core/issues/13346) (a nullable
+`findById` override stops compiling on 5.2.4).
 
 ## Deployment
 

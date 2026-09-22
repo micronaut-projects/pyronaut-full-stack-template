@@ -103,4 +103,4 @@ pyronaut process     # compile; also writes the OpenAPI document
 pyronaut test        # the only step that proves anything runs
 ```
 
-Docstrings become OpenAPI documentation: the first sentence is the operation `summary`, the whole docstring the `description`. Write them for the person calling the endpoint. Swagger annotations such as `@Tag` are **not** currently honoured.
+Docstrings become OpenAPI documentation: the first sentence is the operation `summary`, the whole docstring the `description`. Write them for the person calling the endpoint. Swagger annotations such as `@Tag` are **not** currently honoured — the compiler cannot resolve any `io.`-prefixed package other than `io.micronaut` (micronaut-core#13345).

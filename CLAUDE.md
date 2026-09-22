@@ -50,7 +50,11 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   `signup1` whose digit depends on declaration order. This is why the page
   handlers in `controllers/views.py` are named `*_page`.
 - **Swagger annotations are silently ignored.** `@Tag` and friends import and
-  compile but never reach the OpenAPI document (pyronaut#168). Docstrings *do*
+  compile but never reach the OpenAPI document (pyronaut#168). The cause is in
+  `PythonAstParser`, which restores the `io.` prefix the run time strips only
+  for `micronaut.` — so `io.swagger`, `io.vertx` and `io.netty` are all
+  invisible to the compiler. Fixed in micronaut-core#13345 (draft, verified);
+  until that ships, do not reach for these annotations. Docstrings *do*
   work — first sentence becomes `summary`, the whole docstring `description`.
   Note that the generated Java stubs carrying no annotations is normal and not
   the cause: annotation metadata lives in the bean definition rather than in
@@ -79,7 +83,7 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
 | GraalVM 25+ | Pyronaut's toolchain minimum |
 | GraalPy `graalpy3.13-25.3.4.1` | Pinned in pyronaut's own `gradle.properties` |
 | The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.3`) |
-| Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers |
+| Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers. On Podman, Ryuk cannot bind-mount the machine's API socket (`operation not supported`) — set `ryuk.disabled = true` in `~/.testcontainers.properties` |
 | Node.js 22 + npm | Bundling only — not needed at runtime |
 
 The cloud session this repository was scaffolded in had none of the first four,
@@ -184,6 +188,45 @@ workarounds. PLAN.md §12 has the tracked list. Two are committed:
    temporary with a link to the issue so it deletes itself later.
 2. **`setup-pyronaut` has no `v1` tag** and its `main` is an empty commit; the
    action lives on an unmerged branch.
+
+## Verifying an upstream fix against this template
+
+A fix in `micronaut-core`'s `inject-python` cannot be verified by adding the jar
+to this project: `pyronaut process` runs the processor from the **Pyronaut tool
+runtime**, not from the project's build classpath. The tool runtime is
+reconstructed from the installed wheel, which bundles the processor jars — so a
+new core build has to travel through a rebuilt wheel.
+
+```bash
+# 1. micronaut-core, on the branch under test
+./gradlew publishToMavenLocal -x test -x javadoc
+
+# 2. pyronaut checkout — launchers once, wheel on every core change.
+#    Pyronaut's projects declare their own repositories, so settings-level
+#    mavenLocal() is ignored; pass an init script with
+#    `gradle.allprojects { repositories { mavenLocal() } }`.
+./gradlew -I /tmp/maven-local.init.gradle -Ppyronaut.micronaut.core.version=<version> assemble
+./gradlew -I /tmp/maven-local.init.gradle -Ppyronaut.micronaut.core.version=<version> \
+    :micronaut-pyronaut:installSdkWheel
+
+# 3. ~/.pyronaut/settings.toml
+[native-images]
+base-url = "/path/to/pyronaut"
+version = "0.0.4-SNAPSHOT"      # the projectVersion, not the wheel's .dev0
+
+# 4. Between runs — the tool runtime is cached by descriptor hash, and
+#    `pyronaut process` is cached by source hash.
+rm -rf ~/.pyronaut/tools/<wheel-version> ~/.pyronaut/setup/<wheel-version>
+rm -f __pyronaut__/processor-main.sha256 __pyronaut__/processor-test.sha256
+```
+
+Two traps. *Conflicting Pyronaut tool artifacts share filename …* means the jar
+in m2 and the one bundled in the installed wheel differ — rebuild the wheel
+after every `publishToMavenLocal`. And a locally built CLI resolves
+`io.micronaut.pyronaut:*` for the **project** at the released version while the
+tool runtime uses the checkout's, so `pyronaut test` can fail with a
+`NoSuchMethodError` that has nothing to do with the change under test; reinstall
+the released wheel when you are done.
 
 ## Next steps
 
