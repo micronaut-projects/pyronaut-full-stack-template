@@ -8,6 +8,12 @@ comes from the server and the page stays interactive afterwards.
 Every screen also works without a server-supplied model: `frontend/src/App.jsx`
 falls back to fetching from the API when `initial` is absent. That is what keeps
 the hydration real rather than decorative.
+
+The handlers are named `*_page` so their operation ids cannot collide with the
+API operations of the same name — `/login` the page and `/api/v1/login` the
+endpoint both exist. A collision is not an error; Micronaut OpenAPI quietly
+appends a number, and the generated client grows a `signup1` whose digit
+depends on declaration order.
 """
 
 from typing import Annotated
@@ -45,28 +51,28 @@ class ViewController:
     @Get("/login")
     @View(APP_VIEW)
     @Secured(SecurityRule.IS_ANONYMOUS)
-    def login(self, error: Annotated[bool, QueryValue(defaultValue="false")] = False) -> dict:
+    def login_page(self, error: Annotated[bool, QueryValue(defaultValue="false")] = False) -> dict:
         """The sign-in screen."""
         return _model("login", error=error)
 
     @Get("/signup")
     @View(APP_VIEW)
     @Secured(SecurityRule.IS_ANONYMOUS)
-    def signup(self) -> dict:
+    def signup_page(self) -> dict:
         """The registration screen."""
         return _model("signup")
 
     @Get("/recover-password")
     @View(APP_VIEW)
     @Secured(SecurityRule.IS_ANONYMOUS)
-    def recover_password(self) -> dict:
+    def recover_password_page(self) -> dict:
         """The "email me a reset link" screen."""
         return _model("recoverPassword")
 
     @Get("/reset-password")
     @View(APP_VIEW)
     @Secured(SecurityRule.IS_ANONYMOUS)
-    def reset_password(self, token: Annotated[str, QueryValue(defaultValue="")] = "") -> dict:
+    def reset_password_page(self, token: Annotated[str, QueryValue(defaultValue="")] = "") -> dict:
         """The "set a new password" screen, reached from the recovery email."""
         return _model("resetPassword", token=token)
 
@@ -74,14 +80,14 @@ class ViewController:
     @Get("/")
     @View(APP_VIEW)
     @Secured(SecurityRule.IS_AUTHENTICATED)
-    def dashboard(self, authentication: Authentication) -> dict:
+    def dashboard_page(self, authentication: Authentication) -> dict:
         """The dashboard."""
         return _model("dashboard", user=user_public(self._current(authentication)))
 
     @Get("/items")
     @View(APP_VIEW)
     @Secured(SecurityRule.IS_AUTHENTICATED)
-    def items(self, authentication: Authentication) -> dict:
+    def items_page(self, authentication: Authentication) -> dict:
         """The item list, server-rendered with its first page already filled in."""
         user = self._current(authentication)
         result = self.items.list_for(user, page_request())
@@ -95,14 +101,14 @@ class ViewController:
     @Get("/settings")
     @View(APP_VIEW)
     @Secured(SecurityRule.IS_AUTHENTICATED)
-    def settings(self, authentication: Authentication) -> dict:
+    def settings_page(self, authentication: Authentication) -> dict:
         """The account settings screen."""
         return _model("settings", user=user_public(self._current(authentication)))
 
     @Get("/admin")
     @View(APP_VIEW)
     @Secured(["ROLE_SUPERUSER"])
-    def admin(self, authentication: Authentication) -> dict:
+    def admin_page(self, authentication: Authentication) -> dict:
         """The user administration screen. Superuser only."""
         result = self.users.page(page_request())
         return _model(

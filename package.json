@@ -8,7 +8,7 @@
     "watch": "webpack --mode development --watch --config webpack.server.cjs & webpack --mode development --watch --config webpack.client.cjs",
     "test": "jest",
     "lint": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true ./frontend",
-    "generate-client": "openapi-ts",
+    "generate-client": "./scripts/generate-client.sh",
     "verify:ssr": "node frontend/ssr-smoke.mjs",
     "check": "npm run test && npm run build && npm run verify:ssr"
   },
@@ -31,6 +31,7 @@
     "babel-loader": "10.0.0",
     "jest": "30.0.5",
     "jest-environment-jsdom": "30.0.5",
+    "typescript": "^5.9.3",
     "webpack": "5.101.0",
     "webpack-cli": "6.0.1"
   },

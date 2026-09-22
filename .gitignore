@@ -13,6 +13,7 @@ node_modules/
 
 # Generated API client — built by `npm run generate-client`
 openapi.json
+openapi.yaml
 
 # Local configuration
 .env

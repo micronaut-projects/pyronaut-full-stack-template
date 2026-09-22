@@ -45,6 +45,14 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   re-enters itself and the stack overflows, and it only bites beans built lazily
   during a request. This is what `app/mail_session.py` works around; read that
   module before touching mail configuration.
+- **Operation ids must be unique across the whole API.** A collision is not an
+  error: Micronaut OpenAPI appends a number, and the generated client grows a
+  `signup1` whose digit depends on declaration order. This is why the page
+  handlers in `controllers/views.py` are named `*_page`.
+- **Swagger annotations are silently ignored.** `@Tag` and friends import and
+  compile but never reach the OpenAPI document, because the generated Java
+  bridge carries no annotations at all (pyronaut#168). Docstrings *do* work —
+  first sentence becomes `summary`, the whole docstring `description`.
 - **`npm run build` before `pyronaut dev`.** The bundles are gitignored, so a
   fresh clone has none and every server-rendered route returns 500.
 - **Killing `pyronaut dev` leaves stale Test Resources state.** The next start

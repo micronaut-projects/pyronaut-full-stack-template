@@ -928,6 +928,10 @@ Known and likely targets:
 | `micronaut-projects/pyronaut` | pytest integration ignores `transactional`, `rollback`, `rebuild_context`; `Sql.Phase.AFTER_ALL` does not run (§9.1) | Issue + PR | **High — committed** |
 | `micronaut-projects/setup-pyronaut` | Action exists only on an unmerged branch; `main` is empty; no `v1` tag (§10) | Merge + tag | **High — blocks CI** |
 | `micronaut-projects/pyronaut` | The CLI is not on PyPI, but the README's install instructions say `pip install pyronaut` (§11.4) | Publish, or correct the docs | **High** |
+| `micronaut-projects/pyronaut` | POM-only coordinates cannot be declared; every dependency is resolved as a jar. [#166](https://github.com/micronaut-projects/pyronaut/issues/166) | Issue filed | **High** |
+| `micronaut-projects/pyronaut` | Swagger annotations such as `@Tag` never reach the generated OpenAPI document, so a generated client cannot be grouped. [#168](https://github.com/micronaut-projects/pyronaut/issues/168) | Issue filed | Medium |
+| `micronaut-projects/micronaut-test-resources` | The property resolver recurses until the stack overflows when asked for a key it does not own, for a bean built lazily during a request (§7.5) | Issue — reproducer outstanding | Medium |
+| `micronaut-projects/pyronaut` | A non-literal annotation argument — a shared constant or a computed `defaultValue` — is silently dropped, taking validation constraints with it | Issue — warn rather than drop | **High** |
 | `micronaut-projects/micronaut-views` | No way to render a React view without the hydration client-bundle script — needed for email bodies and any non-hydrating render (§7.5) | Issue + PR | Medium |
 | `micronaut-projects/pyronaut` | GraalJS SSR polyfills (`URL`, `URLSearchParams`, TextEncoder/Decoder, web streams) are hand-rolled per project — the petclinic and this template will duplicate them | Issue: fold into `views-react` or document | Medium |
 | `micronaut-projects/micronaut-views` | React 19 SSR compatibility on GraalJS, if §11.1 finds breakage | Issue + PR | Medium |

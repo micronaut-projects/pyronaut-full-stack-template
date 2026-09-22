@@ -31,8 +31,13 @@ class PrivateController:
         self.users = users
 
     @Post("/users")
-    def create_user(self, body: Annotated[UserCreate, Body, Valid]) -> HttpResponse:
-        """Create a user without authentication. Never available in production."""
+    def create_user_directly(self, body: Annotated[UserCreate, Body, Valid]) -> HttpResponse:
+        """Create a user without authentication. Never available in production.
+
+        Named distinctly from `create_user` on the users controller: operation
+        ids must be unique across the whole API or the generated client ends up
+        with a `createUser1`, whose number depends on declaration order.
+        """
         try:
             user = self.users.create(body)
         except EmailAlreadyUsed:
