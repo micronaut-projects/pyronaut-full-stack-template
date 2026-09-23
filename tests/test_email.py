@@ -36,6 +36,20 @@ def test_password_recovery_sends_a_rendered_email(client, mailpit_client):
     assert "<link" not in html
 
 
+@pytest.mark.xfail(
+    reason="micronaut-views#1199: the React renderer always appends the hydration "
+    "bootstrap, after </html>, so the whole view model — including the reset token — "
+    "is serialised into the message. Remove the marker when that is fixed.",
+    strict=True,
+)
+def test_the_email_carries_no_hydration_payload(client, mailpit_client):
+    """An email is not a browser page: it should carry no scripts and no model."""
+    assert client.post(f"/api/v1/password-recovery/{SUPERUSER_EMAIL}").status_code == 200
+    html = str(mailpit_client.getMessage("latest").html())
+    assert "<script" not in html
+    assert "rootProps" not in html
+
+
 def test_the_recovery_token_in_the_email_actually_works(client, mailpit_client):
     """End to end: request a reset, read the link out of the delivered mail, use it."""
     email = f"reset-{__import__('uuid').uuid4().hex[:10]}@example.com"

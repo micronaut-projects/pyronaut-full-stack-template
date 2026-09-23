@@ -132,6 +132,11 @@ mounted outside the router context. Keep it green, and add a case to
   If you are reaching for a compose file, the answer is somewhere else.
 - **Emails are React components** in the same SSR bundle as the pages, rendered
   on GraalJS. They must use inline styles only — no stylesheet link, no classes.
+  Note that the renderer currently appends the hydration bootstrap to *every*
+  render, after `</html>`, so a delivered email carries the whole view model in
+  `rootProps` — the reset token included (micronaut-views#1199). Keep secrets
+  out of an email's model until that is fixed; `tests/test_email.py` has a
+  strict xfail that will start failing the moment it is.
 - **JVM runtime, not native.** GraalJS does not work in a native image yet
   (PLAN.md §4.4). Keep every other choice native-friendly: no JNI dependencies,
   so that when GraalJS lands the change is a build flag.
