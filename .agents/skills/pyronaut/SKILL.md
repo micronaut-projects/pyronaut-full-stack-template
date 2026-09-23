@@ -51,7 +51,9 @@ A wrong import compiles and fails at context startup with `ModuleNotFoundError`,
 
 ### 2) Write annotations with literal arguments only
 
-**This is the highest-value rule in this skill.** The processor reads annotation arguments from source; it does not evaluate them. A non-literal argument is discarded without a warning.
+**This is the highest-value rule in this skill.** The processor reads annotations from source; it does not evaluate them. Anything it cannot read is discarded without a warning (pyronaut#173).
+
+A bare name for a scalar argument *does* resolve — `Size(min=MIN_PASSWORD, max=128)` keeps its lower bound — which is exactly why the two forms below are so easy to reach for.
 
 ```python
 # WRONG — the constraint silently disappears, and the API accepts anything

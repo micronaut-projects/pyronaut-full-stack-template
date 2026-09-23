@@ -232,8 +232,10 @@ cannot be declared — fixed, [PR #170](https://github.com/micronaut-projects/py
 reach the OpenAPI document — fix in
 [micronaut-core#13345](https://github.com/micronaut-projects/micronaut-core/pull/13345)),
 [pyronaut#169](https://github.com/micronaut-projects/pyronaut/issues/169) (JUnit tests build their
-context against the system classloader — fix in
-[PR #171](https://github.com/micronaut-projects/pyronaut/pull/171)) and
+context against the system classloader — fixed,
+[PR #171](https://github.com/micronaut-projects/pyronaut/pull/171)),
+[pyronaut#173](https://github.com/micronaut-projects/pyronaut/issues/173) (an annotation the processor
+cannot read from source is dropped silently, validation constraints included) and
 [micronaut-core#13346](https://github.com/micronaut-projects/micronaut-core/issues/13346) (a nullable
 `findById` override stops compiling on 5.2.4).
 

@@ -29,9 +29,14 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   `micronaut.context.event`**, not `micronaut.runtime.event`. When an import
   fails at runtime, grep `__pyronaut__/ide-stubs/` for the class name rather
   than guessing from the Java package.
-- **Annotation values must be compile-time constants.** `QueryValue(defaultValue=str(SIZE))`
-  is silently dropped — the processor reads source, it does not evaluate. The
-  parameter then shows up as `required: true` in the OpenAPI schema.
+- **An annotation the processor cannot read from source is dropped silently**
+  (pyronaut#173). The boundary was measured: a bare name for a scalar argument
+  resolves (`Size(min=MIN_PASSWORD, ...)` keeps `minLength: 8`); a call
+  expression does not (`QueryValue(defaultValue=str(SIZE))` loses the member,
+  and the parameter is published `required: true`); and an annotation bound to
+  a name does not (`PASSWORD = Size(min=8, max=128)` used as
+  `Annotated[str, NotBlank, PASSWORD]` leaves the field with no length
+  constraint at all). Write annotations out in full.
 - **A Python exception cannot be an `ExceptionHandler` type parameter.** That
   bound is Java's `Throwable`. Catch Python exceptions in the controller.
 - **POM-only Maven coordinates cannot be declared.** Pyronaut resolves every
@@ -60,7 +65,9 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   the cause: annotation metadata lives in the bean definition rather than in
   the generated source, which is how `@Controller` and `@Secured` reach the
   runtime.
-- **JUnit tests run against the system classloader** (pyronaut#169), so no
+- **JUnit tests run against the system classloader** (pyronaut#169 — fixed
+  upstream in PR #171, not yet in a release; `test-java/app/JUnitClassLoaderConfigurer.java`
+  is the local stand-in and should go when 0.0.5 lands), so no
   project resource directory is reachable from them — not `views`, not
   `config`. Anything resolving `classpath:` breaks there while the identical
   pytest resolves fine. The server-render bundle is therefore resolved by file
