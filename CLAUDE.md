@@ -73,7 +73,8 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   pytest resolves fine. The server-render bundle is therefore resolved by file
   path in `tests-config/application-test.toml`; delete that override when the
   bug is fixed.
-- **React 19 needs the `MessageChannel` shim, and that is all it needs.** Its scheduler requires
+- **React 19 needs the `MessageChannel` shim, and that is all it needs.** Sent upstream as
+  micronaut-views#1201, so `frontend/polyfills.js` can drop it once that ships. Its scheduler requires
   `MessageChannel`; React 18 fell back to a timer when it was missing. GraalJS has neither that nor
   `setTimeout`, so the shim in `frontend/polyfills.js` delivers on a microtask — change it to a timer
   and every render 500s. Measured: React 19 renders in 20.4ms against React 18's 18.6ms, so the
