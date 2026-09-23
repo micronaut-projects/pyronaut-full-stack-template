@@ -925,7 +925,7 @@ Known and likely targets:
 
 | Repository | Item | Kind | Priority |
 | --- | --- | --- | --- |
-| `micronaut-projects/pyronaut` | pytest integration ignores `transactional`, `rollback`, `rebuild_context`; `Sql.Phase.AFTER_ALL` does not run (§9.1) | Issue + PR | **High — committed** |
+| `micronaut-projects/pyronaut` | pytest integration accepts `transactional`, `rollback` and `rebuild_context` and does not apply them — verified with a two-test probe. [#174](https://github.com/micronaut-projects/pyronaut/issues/174) | Issue filed | **High** |
 | `micronaut-projects/setup-pyronaut` | Action exists only on an unmerged branch; `main` is empty; no `v1` tag (§10) | Merge + tag | **High — blocks CI** |
 | `micronaut-projects/pyronaut` | The CLI is not on PyPI, but the README's install instructions say `pip install pyronaut` (§11.4) | Publish, or correct the docs | **High** |
 | `micronaut-projects/pyronaut` | POM-only coordinates cannot be declared; every dependency is resolved as a jar. [#166](https://github.com/micronaut-projects/pyronaut/issues/166) | Issue filed | **High** |

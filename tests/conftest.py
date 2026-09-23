@@ -6,13 +6,18 @@ afterwards.
 
 Test isolation note
 -------------------
-Pyronaut's pytest integration does not currently implement Micronaut Test's
-per-test transaction lifecycle: ``transactional``, ``rollback`` and
-``rebuild_context`` are accepted but have no effect. Until that is fixed
-upstream, tests clean up after themselves through the ``clean_db`` fixture
-below. When the upstream fix lands this fixture and its uses should be deleted.
+``transactional``, ``rollback`` and ``rebuild_context`` are accepted by the
+pytest integration and have no effect — measured, not assumed: a row written in
+one test is still there in the next
+(https://github.com/micronaut-projects/pyronaut/issues/174).
 
-Tracking: https://github.com/micronaut-projects/pyronaut/issues (see PLAN.md §9.1)
+So isolation here is arranged by hand. Tests never assume an empty table and
+never assert on a global row count; anything that has to be unique comes from
+the ``unique_email`` fixture. When #174 is fixed, the honest simplification is
+to make ``application_context`` transactional and delete those precautions --
+but note that a rolled-back test transaction would not cover work done by the
+embedded server on its own threads, so the HTTP-level tests would still need
+``unique_email``.
 """
 
 import uuid
