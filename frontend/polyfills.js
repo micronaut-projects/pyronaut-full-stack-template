@@ -65,3 +65,29 @@ if (!globalThis.URL) {
     }
   };
 }
+
+// React 19's scheduler reaches for MessageChannel to yield between units of
+// work; React 18 fell back to setTimeout when it was absent, React 19 does not.
+// GraalJS provides neither by default, so without this a React 19 render fails
+// outright with "ReferenceError: MessageChannel is not defined" — a 500, not a
+// slow page. Delivery has to be asynchronous, as the platform's is, or the
+// scheduler re-enters itself.
+if (!globalThis.MessageChannel) {
+  globalThis.MessageChannel = class MessageChannel {
+    constructor() {
+      const port1 = {onmessage: null};
+      const port2 = {
+        postMessage(data) {
+          // A microtask, not setTimeout: GraalJS has no timer globals either.
+          Promise.resolve().then(() => {
+            if (typeof port1.onmessage === 'function') {
+              port1.onmessage({data});
+            }
+          });
+        }
+      };
+      this.port1 = port1;
+      this.port2 = port2;
+    }
+  };
+}

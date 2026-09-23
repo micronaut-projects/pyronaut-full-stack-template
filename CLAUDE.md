@@ -73,10 +73,15 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   pytest resolves fine. The server-render bundle is therefore resolved by file
   path in `tests-config/application-test.toml`; delete that override when the
   bug is fixed.
-- **Stay on React 18.** React 19 renders correctly but takes over 300s where React 18 takes 0.20s
-  for the same set of renders (micronaut-views#1198). Suspected cause is the unconditional
-  `web-streams-polyfill` in `webpack.server.cjs`; the experiment is to make it conditional on
-  `globalThis.ReadableStream` being absent and re-time. Not yet run.
+- **React 19 needs the `MessageChannel` shim, and that is all it needs.** Its scheduler requires
+  `MessageChannel`; React 18 fell back to a timer when it was missing. GraalJS has neither that nor
+  `setTimeout`, so the shim in `frontend/polyfills.js` delivers on a microtask — change it to a timer
+  and every render 500s. Measured: React 19 renders in 20.4ms against React 18's 18.6ms, so the
+  "300s versus 0.20s" this file used to claim was wrong, and so was blaming `web-streams-polyfill`
+  (making it conditional changes nothing — GraalJS has no native `ReadableStream`, so it installs
+  either way). See micronaut-views#1198.
+  The project stays on React 18 only until micronaut-views#1199 is fixed: React 19 adds
+  `<link rel="preload" as="script">` to `<head>`, which lands in email bodies.
 - **`npm run build` before `pyronaut dev`.** The bundles are gitignored, so a
   fresh clone has none and every server-rendered route returns 500.
 - **Killing `pyronaut dev` leaves stale Test Resources state.** The next start

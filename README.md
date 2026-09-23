@@ -111,11 +111,19 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
 - **No Vite HMR.** Server rendering means `pyronaut dev` plus a webpack watcher: a rebuild and a
   manual refresh on every change, losing component state, against Vite's sub-100ms in-place module
   swap. Raised as [micronaut-views#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197).
-- **The frontend is React 18, not 19.** React 19 renders correctly but is about three orders of
-  magnitude slower — 0.20s versus over 300s for the same 11 renders — which is filed as
-  [micronaut-views#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198). The suspected cause is the
-  `web-streams-polyfill` that the bundler configuration applies unconditionally. The rest of the
-  modern stack is staged in [PLAN.md](./PLAN.md).
+- **The frontend is React 18, not 19** — but not for the reason this file used to give. React 19 is
+  not slow on GraalJS; without a shim it does not render at all, returning a 500 with
+  `ReferenceError: MessageChannel is not defined`. React 19's scheduler requires `MessageChannel`
+  where React 18 fell back to a timer, and GraalJS has neither. With the shim in
+  `frontend/polyfills.js` React 19 renders in 20.4ms against React 18's 18.6ms — the same, within
+  noise. Measured and corrected on
+  [micronaut-views#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198); the earlier "three orders of magnitude slower" claim was
+  wrong, as was the `web-streams-polyfill` theory.
+
+  What still holds React 19 back here is [micronaut-views#1199](https://github.com/micronaut-projects/micronaut-views/issues/1199): React 19 also puts
+  `<link rel="preload" as="script">` in `<head>`, so an email body gains a second piece of hydration
+  apparatus it cannot use. Once [micronaut-views#1200](https://github.com/micronaut-projects/micronaut-views/pull/1200) lands, the upgrade is a
+  version bump. The rest of the modern stack is staged in [PLAN.md](./PLAN.md).
 - **Throughput and startup are unmeasured.** The concurrency argument — GraalPy context pooling
   instead of a worker fleet — is inherited from the design and has not been benchmarked here.
   Treat it as a claim to test, not a result.
