@@ -108,9 +108,15 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
 - **Native image is deferred.** GraalJS is not supported inside a native image and server-side
   rendering needs it, so the first cut targets the JVM ([PLAN.md §4.4](./PLAN.md)). Everything
   else is kept native-friendly — no JNI dependencies — so the switch stays a build flag.
-- **No Vite HMR.** Server rendering means `pyronaut dev` plus a webpack watcher: a rebuild and a
-  manual refresh on every change, losing component state, against Vite's sub-100ms in-place module
-  swap. Raised as [micronaut-views#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197).
+- **No Vite HMR**, and the gap is narrower than it looks. Micronaut Views React already reloads the
+  server bundle in process — it watches the file, drops its pool of GraalJS contexts and picks up the
+  rebuild without a restart. Two things stop that helping here. `pyronaut dev` restarts the whole
+  application first, so the fast path never runs ([pyronaut#182](https://github.com/micronaut-projects/pyronaut/issues/182)): measured, a bundle
+  change costs a 7.1s restart where the in-process reload would be near-instant. And nothing tells the
+  browser, so the refresh is still manual. Auto-refresh on rebuild would close most of it;
+  state-preserving HMR earns its complexity far less in an SSR app, where the page's state comes from
+  the server model on every navigation anyway. Researched on
+  [micronaut-views#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197).
 - **The frontend is React 18, not 19** — but not for the reason this file used to give. React 19 is
   not slow on GraalJS; without a shim it does not render at all, returning a 500 with
   `ReferenceError: MessageChannel is not defined`. React 19's scheduler requires `MessageChannel`
