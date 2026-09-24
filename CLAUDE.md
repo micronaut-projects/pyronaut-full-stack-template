@@ -42,6 +42,13 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
 - **POM-only Maven coordinates cannot be declared.** Pyronaut resolves every
   dependency as a jar. Declare the concrete jars instead — see the GraalJS
   comment in `pyproject.toml`, and pyronaut#166.
+- **An id read from an entity is a Python `uuid.UUID`, not a `java.util.UUID`**, and
+  passing it straight into a repository matches nothing — an empty `Optional`, not
+  an error, for a row that is right there. Convert with `UUID.fromString(str(value))`
+  before any repository call; `services/users.py` and `services/items.py` do, and
+  those conversions come out when [micronaut-core#13382](https://github.com/micronaut-projects/micronaut-core/issues/13382) is fixed.
+  Note that `java.time.Instant` is *not* affected — it stays a foreign Java object —
+  so this is specific to the types GraalPy maps natively, not to conversion generally.
 - **`Pageable.from(...)` is unreachable** — `from` is a Python keyword. Use the
   `page_request()` helper in `app/paging.py`.
 - **The JWT secret must be at least 256 bits** for HS256. A short one fails only

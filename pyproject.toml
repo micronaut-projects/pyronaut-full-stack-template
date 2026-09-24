@@ -20,7 +20,7 @@ type = 'jvm'
 repositories = ['mavenCentral']
 # Pinned to match the versions the Pyronaut CLI itself is built against;
 # see gradle.properties in micronaut-projects/pyronaut.
-core.version = '5.2.3'
+core.version = '5.2.5'
 platform.version = '5.1.0'
 
 [tool.pyronaut.control-panel]
@@ -88,9 +88,9 @@ runtime = [
   # every project dependency as a jar (MavenClasspathResolver hardcodes the
   # "jar" extension), so it cannot be declared. These are the concrete jars the
   # aggregator POM pulls in. See PLAN.md section 12.
-  'org.graalvm.polyglot:polyglot:25.3.4.1',
-  'org.graalvm.js:js-language:25.3.4.1',
-  'org.graalvm.truffle:truffle-runtime:25.3.4.1',
+  'org.graalvm.polyglot:polyglot:25.4.4.1.1',
+  'org.graalvm.js:js-language:25.4.4.1.1',
+  'org.graalvm.truffle:truffle-runtime:25.4.4.1.1',
   'io.micronaut.pyronaut:micronaut-pyronaut-logback',
 ]
 development-runtime = [
