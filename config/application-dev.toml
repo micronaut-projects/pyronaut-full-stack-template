@@ -9,3 +9,27 @@
 
 [micronaut.http.services.mailpit]
 url = 'http://localhost:8025'
+
+# Read the SSR bundle from the file the bundler writes rather than the copy on the
+# classpath, and watch that directory. micronaut-views-react then drops its pool of
+# GraalJS contexts when the bundle changes and the next render uses the new one,
+# without a restart -- `tool.pyronaut.dev.restart-excludes` in pyproject.toml keeps
+# dev mode from rebooting for the same change.
+#
+# Measured working: `npm run watch` in one terminal, `pyronaut dev` in another, and an
+# edit to a React component is serving new markup within 10s with no restart.
+#
+# It needs micronaut-views-react 6.2.1, which is not out yet. On the released 6.2.0 the
+# watch thread dies at startup -- an uncaught NullPointerException in
+# `ReactJSSources.onApplicationEvent`, because a `file:` bundle reaches a code path that
+# assumes a classpath `Source` -- so nothing is watched and, with `restart-excludes` also
+# suppressing the restart, a bundle change does nothing at all until you restart by hand.
+# The fix is micronaut-views#1203. Until it ships, either restart manually after
+# `npm run build`, or drop `restart-excludes` from pyproject.toml to get the (7.1s)
+# full restart back.
+[micronaut.views.react]
+server-bundle-path = 'file:views/ssr-components.mjs'
+
+[micronaut.io.watch]
+enabled = true
+paths = ['views']

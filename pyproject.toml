@@ -42,6 +42,9 @@ additional-resources = ['views', 'static']
 # https://github.com/micronaut-projects/pyronaut/issues/169 and the override in
 # tests-config/application-test.toml.
 
+[tool.pyronaut.dev]
+restart-excludes = ['views', 'static']
+
 [tool.pyronaut.test]
 # pytest owns the API suite; JUnit owns the Playwright end-to-end suite.
 engine = 'both'
@@ -95,6 +98,10 @@ runtime = [
 ]
 development-runtime = [
   'io.micronaut.controlpanel:micronaut-control-panel-datasource',
+  # macOS file watching falls back to a slow polling implementation without this:
+  # no watch event arrived in over two minutes without it. pyronaut#190 tracks
+  # having the CLI add it automatically on macOS.
+  'io.micronaut:micronaut-runtime-osx',
 ]
 build = [
   'io.micronaut:micronaut-context-python',

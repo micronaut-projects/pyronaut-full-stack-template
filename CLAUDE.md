@@ -95,14 +95,19 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
 - **Killing `pyronaut dev` leaves stale Test Resources state.** The next start
   fails with "Test resource service is not available". Clear it with
   `rm -rf .micronaut/test-resources __pyronaut__/test-resources-session.json`.
+- **`pkill -f "pyronaut dev"` does not stop the server.** The CLI spawns a
+  separate JVM (`PyronautRunMain`) that keeps port 8080. The next `pyronaut dev`
+  then dies with `BindException: Address already in use` — and if you are testing
+  against `localhost:8080` you will be talking to the *old* process without
+  noticing. Kill it by port: `lsof -ti :8080 | xargs kill -9`.
 
 ## Environment this needs
 
 | Requirement | Why |
 | --- | --- |
-| GraalVM 25+ | Pyronaut's toolchain minimum |
-| GraalPy `graalpy3.13-25.3.4.1` | Pinned in pyronaut's own `gradle.properties` |
-| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.3`) |
+| GraalVM `25.4.4+1-graal` | Pyronaut's toolchain minimum is 25, but the Crema native build and GraalPy both want this exact build. Set `JAVA_HOME` to it — a stale Gradle daemon on another JDK fails the native build with `Could not find required field OptimizedDirectCallNode.callCount` |
+| GraalPy `graalpy3.13-25.4.4` | Pinned in pyronaut's own `gradle.properties`. The version must match the GraalVM the project builds against and the one Pyronaut was built with — a mismatch shows up as `Unknown operation code 0` or an NPE creating the GraalPy context, not as a version error |
+| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.4`) |
 | Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers. On Podman, Ryuk cannot bind-mount the machine's API socket (`operation not supported`), which fails only the Mailpit test — run with `TESTCONTAINERS_RYUK_DISABLED=true`. The `ryuk.disabled` property in `~/.testcontainers.properties` is **not** honoured by Testcontainers 2.x; only the environment variable works |
 | Node.js 22 + npm | Bundling only — not needed at runtime |
 

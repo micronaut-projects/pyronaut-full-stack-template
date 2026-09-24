@@ -108,15 +108,26 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
 - **Native image is deferred.** GraalJS is not supported inside a native image and server-side
   rendering needs it, so the first cut targets the JVM ([PLAN.md §4.4](./PLAN.md)). Everything
   else is kept native-friendly — no JNI dependencies — so the switch stays a build flag.
-- **No Vite HMR**, and the gap is narrower than it looks. Micronaut Views React already reloads the
-  server bundle in process — it watches the file, drops its pool of GraalJS contexts and picks up the
-  rebuild without a restart. Two things stop that helping here. `pyronaut dev` restarts the whole
-  application first, so the fast path never runs ([pyronaut#182](https://github.com/micronaut-projects/pyronaut/issues/182)): measured, a bundle
-  change costs a 7.1s restart where the in-process reload would be near-instant. And nothing tells the
-  browser, so the refresh is still manual. Auto-refresh on rebuild would close most of it;
-  state-preserving HMR earns its complexity far less in an SSR app, where the page's state comes from
-  the server model on every navigation anyway. Researched on
+- **No Vite HMR, but reload does work now** — and the remaining gap is a browser refresh. Micronaut
+  Views React reloads the server bundle in process: it watches the file, drops its pool of GraalJS
+  contexts, and the next render uses the rebuild. Getting that to actually happen took three fixes,
+  and `config/application-dev.toml` carries the configuration. Measured with `npm run watch` alongside
+  `pyronaut dev`: an edit to a React component serves new markup **within 10s with no restart**,
+  against a baseline of a 7.1s full restart. What is still missing is that nothing tells the browser,
+  so the refresh is manual. Auto-refresh on rebuild would close most of what is left; state-preserving
+  HMR earns its complexity far less in an SSR app, where the page's state comes from the server model
+  on every navigation anyway. Researched on
   [micronaut-views#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197).
+
+  Two of the three fixes have shipped — [pyronaut#183](https://github.com/micronaut-projects/pyronaut/pull/183),
+  which stops dev mode restarting for a watched directory, is in Pyronaut 0.0.4, and
+  `io.micronaut:micronaut-runtime-osx` is declared in `pyproject.toml` because without it macOS
+  polls and delivered no event in over two minutes ([pyronaut#190](https://github.com/micronaut-projects/pyronaut/issues/190)
+  asks the CLI to add it for you). The third has not: on the released `micronaut-views-react` 6.2.0
+  the watch thread dies at startup with an uncaught `NullPointerException`, so until
+  [micronaut-views#1203](https://github.com/micronaut-projects/micronaut-views/pull/1203) ships in
+  6.2.1 you get no reload and, because the restart is suppressed too, must restart by hand.
+  `config/application-dev.toml` says so at the point of use.
 - **The frontend is React 18, not 19** — but not for the reason this file used to give. React 19 is
   not slow on GraalJS; without a shim it does not render at all, returning a 500 with
   `ReferenceError: MessageChannel is not defined`. React 19's scheduler requires `MessageChannel`
