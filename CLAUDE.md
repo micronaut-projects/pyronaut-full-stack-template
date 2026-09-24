@@ -44,11 +44,19 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   comment in `pyproject.toml`, and pyronaut#166.
 - **An id read from an entity is a Python `uuid.UUID`, not a `java.util.UUID`**, and
   passing it straight into a repository matches nothing — an empty `Optional`, not
-  an error, for a row that is right there. Convert with `UUID.fromString(str(value))`
-  before any repository call; `services/users.py` and `services/items.py` do, and
-  those conversions come out when [micronaut-core#13382](https://github.com/micronaut-projects/micronaut-core/issues/13382) is fixed.
-  Note that `java.time.Instant` is *not* affected — it stays a foreign Java object —
-  so this is specific to the types GraalPy maps natively, not to conversion generally.
+  an error, for a row that is right there. Worse, `existsById` returns `False` for
+  that row: a wrong answer to a direct question, silently. Convert with
+  `UUID.fromString(str(value))` before any repository call; `services/users.py` and
+  `services/items.py` do, and those conversions come out when
+  [micronaut-core#13382](https://github.com/micronaut-projects/micronaut-core/issues/13382) is fixed.
+
+  Measured, so do not generalise it the wrong way. It is **the entity read path
+  only** — a `java.util.UUID` you build in Python stays a foreign Java object and
+  round-trips fine, as do `BigDecimal`, `BigInteger`, `Instant`, `LocalDate` and
+  `Duration`. And `createdAt` (an `Instant`) read off the *same* entity in the same
+  call stays foreign too, so it is per-type on the way out rather than a blanket
+  materialisation policy. The id really is a Python object — `isinstance(id, uuid.UUID)`
+  is `True` — not a foreign one that prints like one.
 - **`Pageable.from(...)` is unreachable** — `from` is a Python keyword. Use the
   `page_request()` helper in `app/paging.py`.
 - **The JWT secret must be at least 256 bits** for HS256. A short one fails only
