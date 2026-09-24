@@ -98,6 +98,16 @@ runtime = [
 ]
 development-runtime = [
   'io.micronaut.controlpanel:micronaut-control-panel-datasource',
+  # Refreshes the browser when the SSR bundle is rebuilt, so `npm run watch` beside
+  # `pyronaut dev` puts an edit on screen without touching the browser. Development
+  # only: it is not on a production classpath at all, and it needs both the dev
+  # environment and `micronaut.views.react.dev.enabled`, which
+  # config/application-dev.toml already sets.
+  #
+  # Commented out until micronaut-views 6.2.1 is released -- the module is new in
+  # micronaut-views#1204 and there is nothing on Maven Central to resolve yet.
+  # Uncomment when it ships; the configuration is already in place.
+  # 'io.micronaut.views:micronaut-views-react-dev:6.2.1',
   # macOS file watching falls back to a slow polling implementation without this:
   # no watch event arrived in over two minutes without it. pyronaut#190 tracks
   # having the CLI add it automatically on macOS.

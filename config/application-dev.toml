@@ -33,3 +33,11 @@ server-bundle-path = 'file:views/ssr-components.mjs'
 [micronaut.io.watch]
 enabled = true
 paths = ['views']
+
+# Refresh the browser when the bundle is rebuilt, closing the last of the gap to
+# Vite-style development: `npm run watch` in one terminal, `pyronaut dev` in another,
+# and an edit to a React component is on screen without touching the browser.
+# Does nothing until the micronaut-views-react-dev dependency is uncommented in
+# pyproject.toml, which waits on micronaut-views 6.2.1 (micronaut-views#1204).
+[micronaut.views.react.dev]
+enabled = true
