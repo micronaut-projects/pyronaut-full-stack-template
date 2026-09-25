@@ -6,13 +6,17 @@ architectural decisions; most of them have already been made and justified there
 
 ## State
 
-The backend compiles and runs. `pyronaut install`, `pyronaut process` and
-`pyronaut dev` all pass against a real MySQL from Test Resources: Flyway applies
-the schema, the first superuser is seeded, login issues a JWT cookie, and the
-React pages server-render on GraalJS with the hydration bundle injected.
+The application runs and the suite is green: **36 tests, 0 failures, 0 skipped**
+(29 API, 7 browser) on Pyronaut 0.0.5 and Micronaut Views 6.3.0. `pyronaut install`,
+`process`, `dev` and `test` all pass against a real MySQL from Test Resources:
+Flyway applies the schema, the first superuser is seeded, login issues a JWT cookie,
+the React 19 pages server-render on GraalJS, emails render from the same bundle and
+are asserted through Mailpit, and hot reload refreshes the browser.
 
-Still to do: confirm the pytest suite passes, the Playwright end-to-end suite,
-the generated TypeScript client, and CI.
+Read a test count out of `__pyronaut__/reports/tests/junit.xml`, not off the exit
+code — see the note in *Upstream work* about tasks that skip silently.
+
+Still to do: benchmarking, the generated TypeScript client end to end, and CI.
 
 ## Gotchas this project already paid for
 
@@ -39,26 +43,27 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   constraint at all). Write annotations out in full.
 - **A Python exception cannot be an `ExceptionHandler` type parameter.** That
   bound is Java's `Throwable`. Catch Python exceptions in the controller.
-- **POM-only Maven coordinates cannot be declared.** Pyronaut resolves every
-  dependency as a jar. Declare the concrete jars instead — see the GraalJS
-  comment in `pyproject.toml`, and pyronaut#166.
-- **An id read from an entity is a Python `uuid.UUID`, not a `java.util.UUID`**, and
-  passing it straight into a repository matches nothing — an empty `Optional`, not
-  an error, for a row that is right there. Worse, `existsById` returns `False` for
-  that row: a wrong answer to a direct question, silently. Convert with
-  `UUID.fromString(str(value))` before any repository call; `services/users.py` and
-  `services/items.py` do, and those conversions come out when
-  [micronaut-core#13382](https://github.com/micronaut-projects/micronaut-core/issues/13382) is fixed.
-
-  Measured, so do not generalise it the wrong way. It is **the entity read path
-  only** — a `java.util.UUID` you build in Python stays a foreign Java object and
-  round-trips fine, as do `BigDecimal`, `BigInteger`, `Instant`, `LocalDate` and
-  `Duration`. And `createdAt` (an `Instant`) read off the *same* entity in the same
-  call stays foreign too, so it is per-type on the way out rather than a blanket
-  materialisation policy. The id really is a Python object — `isinstance(id, uuid.UUID)`
-  is `True` — not a foreign one that prints like one.
-- **`Pageable.from(...)` is unreachable** — `from` is a Python keyword. Use the
-  `page_request()` helper in `app/paging.py`.
+- **A POM-only coordinate needs the four-part form**, `group:artifact:pom:version` — a
+  three-part coordinate is resolved as a jar and fails
+  ([pyronaut#170](https://github.com/micronaut-projects/pyronaut/pull/170)). It does not work
+  everywhere yet: the test-resources-server scope still rejects four-part coordinates, so
+  `pyproject.toml` keeps listing the three concrete jars GraalJS needs. Sent upstream as
+  [pyronaut#215](https://github.com/micronaut-projects/pyronaut/pull/215); use the aggregator
+  once that ships.
+- **An id read from an entity is a Python `uuid.UUID`, and that is now fine.** It really is a
+  Python object — `isinstance(id, uuid.UUID)` is `True`, not a foreign one that prints like one —
+  but a repository accepts it: `findById` finds the row and `existsById` answers `True`. Before
+  Core 5.2.7 neither did, silently, which is what the `UUID.fromString(str(value))` conversions in
+  `services/` were for; they are gone.
+  Fixed by [micronaut-core#13385](https://github.com/micronaut-projects/micronaut-core/pull/13385):
+  a type variable erases to `Object`, and the interop layer was only converting when the target type
+  was declared as `UUID`. `CrudRepository.findById(ID)` is exactly that shape. The same applied to
+  `date`, `time`, `datetime`, `timedelta` and `timezone`, all covered by the fix.
+  Annotate ids with Python's `uuid.UUID` rather than importing `java.util.UUID` — Pyronaut maps the
+  two, so the generated Java is identical.
+- **A Java name that collides with a Python keyword takes a trailing underscore.**
+  `Pageable.from(page, size)` is written `Pageable.from_(page, size)`; no `getattr` needed.
+  `app/paging.py` still wraps it, but only to clamp a page size arriving from a query parameter.
 - **The JWT secret must be at least 256 bits** for HS256. A short one fails only
   at login, as "Cannot obtain an access token".
 - **Do not let Test Resources resolve a property it does not own.** Its resolver
@@ -69,35 +74,29 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   error: Micronaut OpenAPI appends a number, and the generated client grows a
   `signup1` whose digit depends on declaration order. This is why the page
   handlers in `controllers/views.py` are named `*_page`.
-- **Swagger annotations are silently ignored.** `@Tag` and friends import and
-  compile but never reach the OpenAPI document (pyronaut#168). The cause is in
+- **Swagger annotations used to be silently ignored** (pyronaut#168). The cause was in
   `PythonAstParser`, which restores the `io.` prefix the run time strips only
-  for `micronaut.` — so `io.swagger`, `io.vertx` and `io.netty` are all
-  invisible to the compiler. Fixed in micronaut-core#13345 (draft, verified);
-  until that ships, do not reach for these annotations. Docstrings *do*
-  work — first sentence becomes `summary`, the whole docstring `description`.
+  for `micronaut.` — so `io.swagger`, `io.vertx` and `io.netty` were all
+  invisible to the compiler. Fixed in Core 5.2.5
+  ([micronaut-core#13345](https://github.com/micronaut-projects/micronaut-core/pull/13345)), so
+  these annotations work now. Docstrings work too — first sentence becomes `summary`, the whole
+  docstring `description`.
   Note that the generated Java stubs carrying no annotations is normal and not
   the cause: annotation metadata lives in the bean definition rather than in
   the generated source, which is how `@Controller` and `@Secured` reach the
   runtime.
-- **JUnit tests run against the system classloader** (pyronaut#169 — fixed
-  upstream in PR #171, not yet in a release; `test-java/app/JUnitClassLoaderConfigurer.java`
-  is the local stand-in and should go when 0.0.5 lands), so no
-  project resource directory is reachable from them — not `views`, not
-  `config`. Anything resolving `classpath:` breaks there while the identical
-  pytest resolves fine. The server-render bundle is therefore resolved by file
-  path in `tests-config/application-test.toml`; delete that override when the
-  bug is fixed.
-- **React 19 needs the `MessageChannel` shim, and that is all it needs.** Sent upstream as
-  micronaut-views#1201, so `frontend/polyfills.js` can drop it once that ships. Its scheduler requires
-  `MessageChannel`; React 18 fell back to a timer when it was missing. GraalJS has neither that nor
-  `setTimeout`, so the shim in `frontend/polyfills.js` delivers on a microtask — change it to a timer
-  and every render 500s. Measured: React 19 renders in 20.4ms against React 18's 18.6ms, so the
-  "300s versus 0.20s" this file used to claim was wrong, and so was blaming `web-streams-polyfill`
-  (making it conditional changes nothing — GraalJS has no native `ReadableStream`, so it installs
-  either way). See micronaut-views#1198.
-  The project stays on React 18 only until micronaut-views#1199 is fixed: React 19 adds
-  `<link rel="preload" as="script">` to `<head>`, which lands in email bodies.
+- **The frontend is React 19, and the `MessageChannel` shim is upstream now.**
+  `micronaut-views-react` 6.3.0 installs it in `host-polyfills.js`, evaluated before the server
+  bundle ([#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)) — React 19's
+  scheduler will not run without it, and GraalJS has neither it nor `setTimeout`. What is still in
+  `frontend/polyfills.js` is `URL` and `URLSearchParams`, which React Router needs and which are
+  measured to be load-bearing: remove them and every server-rendered route returns 500. Sent
+  upstream as [#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208).
+  React 19 also needs `hydrate-without-request = false`, or its extra
+  `<link rel="preload" as="script">` lands in email bodies
+  ([#1199](https://github.com/micronaut-projects/micronaut-views/issues/1199)); `config/application.toml`
+  sets it. React 19 renders in 20.4ms against React 18's 18.6ms — the "300s versus 0.20s" this file
+  once claimed was wrong, as was blaming `web-streams-polyfill`.
 - **`npm run build` before `pyronaut dev`.** The bundles are gitignored, so a
   fresh clone has none and every server-rendered route returns 500.
 - **Killing `pyronaut dev` leaves stale Test Resources state.** The next start
@@ -115,7 +114,7 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
 | --- | --- |
 | GraalVM `25.4.4+1-graal` | Pyronaut's toolchain minimum is 25, but the Crema native build and GraalPy both want this exact build. Set `JAVA_HOME` to it — a stale Gradle daemon on another JDK fails the native build with `Could not find required field OptimizedDirectCallNode.callCount` |
 | GraalPy `graalpy3.13-25.4.4` | Pinned in pyronaut's own `gradle.properties`. The version must match the GraalVM the project builds against and the one Pyronaut was built with — a mismatch shows up as `Unknown operation code 0` or an NPE creating the GraalPy context, not as a version error |
-| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.4`) |
+| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.5`). Clearing `~/.pyronaut/setup/<version>` means re-running `pyronaut setup`; a dependency change does too |
 | Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers. On Podman, Ryuk cannot bind-mount the machine's API socket (`operation not supported`), which fails only the Mailpit test — run with `TESTCONTAINERS_RYUK_DISABLED=true`. The `ryuk.disabled` property in `~/.testcontainers.properties` is **not** honoured by Testcontainers 2.x; only the environment variable works |
 | Node.js 22 + npm | Bundling only — not needed at runtime |
 
@@ -219,13 +218,21 @@ When unsure how something is expressed in Pyronaut, check these before guessing:
 ## Upstream work
 
 Gaps found here go back to their home repositories as **draft PRs**, not local
-workarounds. PLAN.md §12 has the tracked list. Two are committed:
+workarounds. PLAN.md §12 has the tracked list, and the README has a table of what
+each fix shipped in.
 
-1. **`pyronaut-pytest` ignores `transactional` / `rollback` / `rebuild_context`.**
-   Until fixed, tests use an explicit truncate-between-tests fixture — mark it
-   temporary with a link to the issue so it deletes itself later.
-2. **`setup-pyronaut` has no `v1` tag** and its `main` is an empty commit; the
-   action lives on an unmerged branch.
+The template now carries **no** workaround for an upstream bug. Three draft PRs are
+open and the two things still missing are named at their point of use:
+[micronaut-views#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)
+(`URL`/`URLSearchParams` into `host-polyfills.js`),
+[pyronaut#215](https://github.com/micronaut-projects/pyronaut/pull/215) (four-part
+coordinates in the test-resources-server scope) and
+[micronaut-core#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)
+(an annotation the processor cannot read is dropped silently — so write annotations
+out in full rather than factoring them into a constant).
+
+`setup-pyronaut` still has no `v1` tag and its `main` is an empty commit, which is a
+maintainer action rather than something that can be sent as a PR. It blocks CI here.
 
 ## Verifying an upstream fix against this template
 
