@@ -40,6 +40,12 @@ def test_authenticated_routes_require_a_session(client):
     assert client.get("/api/v1/users/me").status_code == 401
 
 
+def test_test_token_is_refused_without_authentication(client):
+    """The route is @Secured(IS_AUTHENTICATED), and it is a module-level function --
+    so this also asserts that the annotation binds on a route that is not a method."""
+    assert client.get("/api/v1/login/test-token").status_code == 401
+
+
 def test_test_token_returns_the_authenticated_user(superuser_client):
     response = superuser_client.get("/api/v1/login/test-token")
     assert response.status_code == 200, response.text
