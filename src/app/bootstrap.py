@@ -12,7 +12,8 @@ migration ahead of ``StartupEvent``.
 import logging
 
 from jakarta.inject import Singleton
-from micronaut.context.event import ApplicationEventListener, StartupEvent
+from micronaut.context.event import StartupEvent
+from micronaut.runtime.event.annotation import EventListener
 
 from .config import AppConfig
 from .dto import UserCreate
@@ -22,12 +23,16 @@ logger = logging.getLogger(__name__)
 
 
 @Singleton
-class FirstSuperuserBootstrap(ApplicationEventListener[StartupEvent]):
+class FirstSuperuserBootstrap:
+    """@EventListener takes the event from the parameter type, so this is an ordinary
+    bean with an ordinary method rather than an implementation of a Java interface."""
+
     def __init__(self, users: UserService, config: AppConfig):
         self.users = users
         self.config = config
 
-    def onApplicationEvent(self, event: StartupEvent) -> None:
+    @EventListener
+    def create_first_superuser(self, event: StartupEvent) -> None:
         email = self.config.first_superuser
         if self.users.by_email(email) is not None:
             return

@@ -6,7 +6,7 @@ the same checks apply whether a user is created through the API, through signup
 or by the startup bootstrap.
 """
 
-from java.util import UUID
+from uuid import UUID
 from jakarta.inject import Singleton
 from jakarta.transaction import Transactional
 from micronaut.data.model import Page, Pageable

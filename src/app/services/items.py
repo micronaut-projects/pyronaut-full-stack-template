@@ -5,7 +5,7 @@ concerns. Pagination is a ``Pageable`` handed to the repository, so the count
 query is generated rather than written out per endpoint.
 """
 
-from java.util import UUID
+from uuid import UUID
 from jakarta.inject import Singleton
 from jakarta.transaction import Transactional
 from micronaut.data.model import Page, Pageable
