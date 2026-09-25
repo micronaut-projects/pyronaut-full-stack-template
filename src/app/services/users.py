@@ -17,12 +17,6 @@ from ..repositories import UserRepository
 from ..passwords import PasswordHasher
 
 
-def _java_uuid(value) -> UUID:
-    """A java.util.UUID, whether the caller had one or a Python uuid.UUID."""
-    return UUID.fromString(str(value))
-
-
-
 class EmailAlreadyUsed(Exception):
     """Raised when an email address is already registered."""
 
@@ -38,10 +32,7 @@ class UserService:
         return self.users.findByEmail(email)
 
     def by_id(self, user_id: UUID) -> User | None:
-        # Normalise before querying. Reading an entity hands back a *Python* uuid.UUID for a
-        # java.util.UUID column, and passing that straight into a repository matches nothing at
-        # all -- an empty result rather than an error. See CLAUDE.md.
-        return self.users.findById(_java_uuid(user_id)).orElse(None)
+        return self.users.findById(user_id).orElse(None)
 
     def count(self) -> int:
         return int(self.users.count())

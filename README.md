@@ -4,8 +4,9 @@ A port of [`fastapi/full-stack-fastapi-template`](https://github.com/fastapi/ful
 to [Pyronaut](https://github.com/micronaut-projects/pyronaut): the same application, written in the
 same language, with fewer moving parts.
 
-> **Status: working, incomplete.** The application runs, and `pyronaut test` is green: 35 tests
-> across the API and a real browser. The frontend is a deliberately plain React 18 stack — see
+> **Status: working, incomplete.** The application runs, and `pyronaut test` is green: 36 tests
+> across the API and a real browser, on Pyronaut 0.0.5 and Micronaut Views 6.3.0. The frontend is a
+> deliberately plain React 19 stack — see
 > [Current state](#current-state) for what is still missing. The full design and its open questions
 > are in [PLAN.md](./PLAN.md).
 
@@ -60,10 +61,10 @@ and the lifecycle is `pyronaut test` / `pyronaut build`.
 
 ```
 $ pyronaut test
-35 tests passed in 1m 17s
+36 tests passed in 44s
 ```
 
-28 API tests and 7 browser tests, in one run, against one embedded server, with a real MySQL and
+29 API tests and 7 browser tests, in one run, against one embedded server, with a real MySQL and
 a real Mailpit. Upstream runs Playwright separately against a Vite server with
 `PLAYWRIGHT_BASE_URL` plumbing to connect the two.
 
@@ -108,55 +109,74 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
 - **Native image is deferred.** GraalJS is not supported inside a native image and server-side
   rendering needs it, so the first cut targets the JVM ([PLAN.md §4.4](./PLAN.md)). Everything
   else is kept native-friendly — no JNI dependencies — so the switch stays a build flag.
-- **No Vite HMR, but reload does work now** — and the remaining gap is a browser refresh. Micronaut
-  Views React reloads the server bundle in process: it watches the file, drops its pool of GraalJS
-  contexts, and the next render uses the rebuild. Getting that to actually happen took three fixes,
-  and `config/application-dev.toml` carries the configuration. Measured with `npm run watch` alongside
-  `pyronaut dev`: an edit to a React component serves new markup **within 10s with no restart**,
-  against a baseline of a 7.1s full restart. What is still missing is that nothing tells the browser,
-  so the refresh is manual. Auto-refresh on rebuild would close most of what is left; state-preserving
-  HMR earns its complexity far less in an SSR app, where the page's state comes from the server model
-  on every navigation anyway. Researched on
-  [micronaut-views#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197).
+- **Hot reload works, including the browser.** `npm run watch` beside `pyronaut dev` and an edit to a
+  React component is on screen without touching the browser. Micronaut Views React reloads the server
+  bundle in process — it watches the file, drops its pool of GraalJS contexts, and the next render uses
+  the rebuild — and `micronaut-views-react-dev`, a development-only dependency, tells the browser over
+  server-sent events. Measured: new markup **within 10s with no restart**, against a 7.1s full restart
+  before. `config/application-dev.toml` carries the configuration.
 
-  Two of the three fixes have shipped — [pyronaut#183](https://github.com/micronaut-projects/pyronaut/pull/183),
-  which stops dev mode restarting for a watched directory, is in Pyronaut 0.0.4, and
-  `io.micronaut:micronaut-runtime-osx` is declared in `pyproject.toml` because without it macOS
-  polls and delivered no event in over two minutes ([pyronaut#190](https://github.com/micronaut-projects/pyronaut/issues/190)
-  asks the CLI to add it for you). The third has not: on the released `micronaut-views-react` 6.2.0
-  the watch thread dies at startup with an uncaught `NullPointerException`, so until
-  [micronaut-views#1203](https://github.com/micronaut-projects/micronaut-views/pull/1203) ships in
-  6.2.1 you get no reload and, because the restart is suppressed too, must restart by hand.
-  `config/application-dev.toml` says so at the point of use.
-- **The frontend is React 18, not 19** — but not for the reason this file used to give. React 19 is
-  not slow on GraalJS; without a shim it does not render at all, returning a 500 with
-  `ReferenceError: MessageChannel is not defined`. React 19's scheduler requires `MessageChannel`
-  where React 18 fell back to a timer, and GraalJS has neither. With the shim in
-  `frontend/polyfills.js` React 19 renders in 20.4ms against React 18's 18.6ms — the same, within
-  noise. Measured and corrected on
-  [micronaut-views#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198); the earlier "three orders of magnitude slower" claim was
-  wrong, as was the `web-streams-polyfill` theory.
-
-  What still holds React 19 back here is [micronaut-views#1199](https://github.com/micronaut-projects/micronaut-views/issues/1199): React 19 also puts
-  `<link rel="preload" as="script">` in `<head>`, so an email body gains a second piece of hydration
-  apparatus it cannot use. Once [micronaut-views#1200](https://github.com/micronaut-projects/micronaut-views/pull/1200) lands, the upgrade is a
-  version bump. The rest of the modern stack is staged in [PLAN.md](./PLAN.md).
+  Getting there took four upstream fixes, all now released:
+  [pyronaut#183](https://github.com/micronaut-projects/pyronaut/pull/183) (dev mode no longer restarts
+  for a watched directory) in Pyronaut 0.0.4;
+  [pyronaut#190](https://github.com/micronaut-projects/pyronaut/issues/190) (the CLI adds
+  `micronaut-runtime-osx` itself on macOS, without which the watcher polls and delivered nothing in two
+  minutes) in 0.0.5; and
+  [micronaut-views#1203](https://github.com/micronaut-projects/micronaut-views/pull/1203) and
+  [#1204](https://github.com/micronaut-projects/micronaut-views/pull/1204) in Views 6.3.0. What is still
+  missing is state-preserving HMR, which earns its complexity far less in an SSR app where the page's
+  state comes from the server model on every navigation anyway
+  ([micronaut-views#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197)).
+- **The frontend is React 19.** It renders on GraalJS in 20.4ms against React 18's 18.6ms — the same
+  within noise. Two things had to land first, both in Views 6.3.0: the `MessageChannel` shim React 19's
+  scheduler needs, which the module now installs itself
+  ([micronaut-views#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)), and
+  `hydrate-without-request`, without which React 19's extra `<link rel="preload" as="script">` landed in
+  email bodies ([#1199](https://github.com/micronaut-projects/micronaut-views/issues/1199),
+  [#1200](https://github.com/micronaut-projects/micronaut-views/pull/1200)). The earlier claim in this
+  file that React 19 was three orders of magnitude slower was wrong, and so was blaming
+  `web-streams-polyfill`; both are corrected on
+  [#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198).
+- **`URL` and `URLSearchParams` are still hand-rolled.** `frontend/polyfills.js` supplies the WHATWG
+  subset React Router uses while server rendering; GraalJS has neither. Measured, not guessed: remove
+  them and every server-rendered route returns 500. Every Pyronaut project doing React SSR carries its
+  own copy, so they belong upstream next to `MessageChannel`.
 - **Throughput and startup are unmeasured.** The concurrency argument — GraalPy context pooling
   instead of a worker fleet — is inherited from the design and has not been benchmarked here.
   Treat it as a claim to test, not a result.
 
-Four bugs in the surrounding toolchain were found during the port, three of them now with a fix
-in flight ([pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166) — merged,
-[pyronaut#168](https://github.com/micronaut-projects/pyronaut/issues/168),
-[pyronaut#169](https://github.com/micronaut-projects/pyronaut/issues/169),
-[micronaut-core#13346](https://github.com/micronaut-projects/micronaut-core/issues/13346)), which is
-itself worth weighing: this is a younger stack than FastAPI's, and a port of this size surfaces rough
-edges.
+### What the port cost upstream
+
+A dozen bugs in the surrounding toolchain were found building this, which is itself worth weighing:
+this is a younger stack than FastAPI's, and a port of this size surfaces rough edges. Almost all of
+them are now fixed and released, and the template carries no workaround for any of them.
+
+| Found | Fixed in |
+| --- | --- |
+| Swagger annotations never reached the OpenAPI document ([pyronaut#168](https://github.com/micronaut-projects/pyronaut/issues/168)) — the cause was in `PythonAstParser`, which restored the `io.` prefix only for `micronaut.` | Core 5.2.5 ([#13345](https://github.com/micronaut-projects/micronaut-core/pull/13345)) |
+| A `Protocol` repository with a nullable `findById` generated an uncompilable interface ([#13346](https://github.com/micronaut-projects/micronaut-core/issues/13346)) | Core 5.2.5 ([#13358](https://github.com/micronaut-projects/micronaut-core/pull/13358)) |
+| An id read off an entity was a Python `uuid.UUID`, so `findById` found nothing and `existsById` answered `False` for a row that was there ([#13382](https://github.com/micronaut-projects/micronaut-core/issues/13382)) | Core 5.2.7 ([#13385](https://github.com/micronaut-projects/micronaut-core/pull/13385)) |
+| JUnit tests built their context against the system classloader, so no project resource directory was reachable ([pyronaut#169](https://github.com/micronaut-projects/pyronaut/issues/169)) | Pyronaut 0.0.5 ([#171](https://github.com/micronaut-projects/pyronaut/pull/171)) |
+| The pytest integration accepted `transactional` and `rollback` and applied neither, because no `TestMethodInterceptor` ever ran ([pyronaut#174](https://github.com/micronaut-projects/pyronaut/issues/174)) | Pyronaut 0.0.4 ([#181](https://github.com/micronaut-projects/pyronaut/pull/181)) |
+| POM-only coordinates could not be declared ([pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166)) | Pyronaut 0.0.5 ([#170](https://github.com/micronaut-projects/pyronaut/pull/170)) — see the caveat below |
+| An email body carried the whole view model, reset token included, because the renderer always appended the hydration bootstrap ([micronaut-views#1199](https://github.com/micronaut-projects/micronaut-views/issues/1199)) | Views 6.3.0 ([#1200](https://github.com/micronaut-projects/micronaut-views/pull/1200)) |
+| React 19 did not render at all on GraalJS: `ReferenceError: MessageChannel is not defined` ([#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198)) | Views 6.3.0 ([#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)) |
+| A `file:` server bundle killed the file watcher at startup, silently, so nothing reloaded ([#1203](https://github.com/micronaut-projects/micronaut-views/pull/1203)) | Views 6.3.0 |
+| Nothing told the browser about a rebuild ([#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197)) | Views 6.3.0 ([#1204](https://github.com/micronaut-projects/micronaut-views/pull/1204)) |
+
+Two are still open. An annotation the processor cannot read from source is dropped silently, taking its
+validation constraint with it ([pyronaut#173](https://github.com/micronaut-projects/pyronaut/issues/173),
+[micronaut-core#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)) — so write
+annotations out in full rather than factoring them into a constant. And while a POM-only coordinate can
+now be declared as `group:artifact:pom:version`, the Test Resources server scope still rejects the
+four-part form, so the GraalJS dependency in `pyproject.toml` remains three concrete jars.
 
 ## Requirements
 
 - A JVM Pyronaut SDK and the `pyronaut` CLI
-- GraalVM 25 or later, and GraalPy
+- GraalVM `25.4.4` and GraalPy `graalpy3.13-25.4.4` — the versions Pyronaut 0.0.5 is built against.
+  A mismatch surfaces as `Unknown operation code 0` or a Truffle initialisation failure, not as a
+  version error
 - Node.js 22 and npm
 - Docker, or another Testcontainers-compatible runtime, for MySQL and Mailpit in development and tests
 
@@ -238,31 +258,20 @@ Generated bundles, `__pyronaut__/`, `.micronaut/` and `node_modules/` are not co
 | Server-rendered React and hydration | **Working.** 7 Playwright tests drive a real browser |
 | React email templates | **Working.** Rendered on GraalJS, asserted through Mailpit |
 | Compile-time OpenAPI and the TypeScript client | **Working.** `npm run generate-client` needs no running server |
-| Frontend stack | React 18, webpack, react-router — deliberately the configuration proven to server-render on GraalJS. Tailwind, shadcn/ui, React 19 and TanStack Router are [PLAN.md](./PLAN.md) Stage B |
+| Frontend stack | React 19, webpack, react-router — deliberately the configuration proven to server-render on GraalJS. Tailwind, shadcn/ui and TanStack Router are [PLAN.md](./PLAN.md) Stage B |
 | CI | Written, **never run** — no Actions minutes until 1 October, and `setup-pyronaut` has no `v1` tag yet |
 | Native image | Deferred. GraalJS is not supported inside a native image and SSR needs it; see [PLAN.md §4.4](./PLAN.md) |
 
 ```
 $ pyronaut test
-35 tests passed in 1m 17s
+36 tests passed in 44s
 ```
 
 The `pyronaut` CLI is not on PyPI yet; it is published as a wheel on the
 [Pyronaut releases page](https://github.com/micronaut-projects/pyronaut/releases).
 
-Bugs found during this port and filed upstream:
-[pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166) (POM-only dependencies
-cannot be declared — fixed, [PR #170](https://github.com/micronaut-projects/pyronaut/pull/170)),
-[pyronaut#168](https://github.com/micronaut-projects/pyronaut/issues/168) (Swagger annotations do not
-reach the OpenAPI document — fix in
-[micronaut-core#13345](https://github.com/micronaut-projects/micronaut-core/pull/13345)),
-[pyronaut#169](https://github.com/micronaut-projects/pyronaut/issues/169) (JUnit tests build their
-context against the system classloader — fixed,
-[PR #171](https://github.com/micronaut-projects/pyronaut/pull/171)),
-[pyronaut#173](https://github.com/micronaut-projects/pyronaut/issues/173) (an annotation the processor
-cannot read from source is dropped silently, validation constraints included) and
-[micronaut-core#13346](https://github.com/micronaut-projects/micronaut-core/issues/13346) (a nullable
-`findById` override stops compiling on 5.2.4).
+Bugs found during this port and filed upstream are inventoried in
+[What the port cost upstream](#what-the-port-cost-upstream), with the release each fix landed in.
 
 ## Deployment
 

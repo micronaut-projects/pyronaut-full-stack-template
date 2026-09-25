@@ -1,12 +1,16 @@
-// GraalJS does not expose the browser URL globals React Router uses during
-// server rendering, nor TextEncoder/TextDecoder (supplied by webpack's
-// ProvidePlugin) or the web streams React's renderer needs. This small
-// WHATWG-compatible subset stays in the server bundle only; the browser bundle
-// uses the platform implementations.
+// GraalJS does not expose the browser URL globals React Router uses during server
+// rendering. This small WHATWG-compatible subset stays in the server bundle only; the
+// browser bundle uses the platform implementations. TextEncoder/TextDecoder come from
+// webpack's ProvidePlugin.
 //
-// TODO(upstream): these polyfills are hand-rolled in every Pyronaut project
-// that server-renders React, including pyronaut-petclinic. They belong in
-// micronaut-views-react. See PLAN.md section 12.
+// MessageChannel used to be here too, for React 19's scheduler. micronaut-views-react
+// 6.3.0 installs it itself, in host-polyfills.js, evaluated before this bundle
+// (micronaut-views#1201) -- so that half is gone.
+//
+// TODO(upstream): URL and URLSearchParams are still hand-rolled in every Pyronaut project
+// that server-renders React, including pyronaut-petclinic, and measured to be load-bearing:
+// without them every server-rendered route returns 500. They belong in micronaut-views-react
+// alongside MessageChannel. Tracked in this repository's issues; see PLAN.md section 12.
 
 if (!globalThis.URLSearchParams) {
   globalThis.URLSearchParams = class {
@@ -62,32 +66,6 @@ if (!globalThis.URL) {
       this.hash = (match && match[4]) || '';
       this.href = `${this.origin}${this.pathname}${this.search}${this.hash}`;
       this.searchParams = new globalThis.URLSearchParams(this.search);
-    }
-  };
-}
-
-// React 19's scheduler reaches for MessageChannel to yield between units of
-// work; React 18 fell back to setTimeout when it was absent, React 19 does not.
-// GraalJS provides neither by default, so without this a React 19 render fails
-// outright with "ReferenceError: MessageChannel is not defined" — a 500, not a
-// slow page. Delivery has to be asynchronous, as the platform's is, or the
-// scheduler re-enters itself.
-if (!globalThis.MessageChannel) {
-  globalThis.MessageChannel = class MessageChannel {
-    constructor() {
-      const port1 = {onmessage: null};
-      const port2 = {
-        postMessage(data) {
-          // A microtask, not setTimeout: GraalJS has no timer globals either.
-          Promise.resolve().then(() => {
-            if (typeof port1.onmessage === 'function') {
-              port1.onmessage({data});
-            }
-          });
-        }
-      };
-      this.port1 = port1;
-      this.port2 = port2;
     }
   };
 }

@@ -39,6 +39,10 @@ folder = '.'
 [micronaut.views.react]
 server-bundle-path = 'classpath:ssr-components.mjs'
 client-bundle-url = '/static/client.js'
+# A render with no request is not going to a browser -- an email body is the case here --
+# and cannot hydrate, so emitting the bootstrap would only serialise the whole view model
+# into the message, reset token included. micronaut-views#1199, fixed in 6.3.0.
+hydrate-without-request = false
 
 [micronaut.router.static-resources.default]
 enabled = true

@@ -21,9 +21,7 @@ class ItemService:
         self.items = items
 
     def by_id(self, item_id: UUID) -> Item | None:
-        # As in users.py: an id read back from an entity is a Python uuid.UUID and must be
-        # converted before it is used as a query parameter.
-        return self.items.findById(UUID.fromString(str(item_id))).orElse(None)
+        return self.items.findById(item_id).orElse(None)
 
     def list_for(self, user: User, pageable: Pageable) -> Page[Item]:
         """Superusers see every item; everyone else sees their own."""
