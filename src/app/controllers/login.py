@@ -27,7 +27,7 @@ from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
 
 from ..dto import Message, NewPassword, UserPublic
-from ..mappers import user_public
+from ..mappers import Projections
 from ..security.tokens import PasswordResetTokens
 from ..services.mail import MailService
 from ..services.users import UserService
@@ -37,13 +37,14 @@ Controller("/api/v1")
 users: Annotated[UserService, Inject]
 mail: Annotated[MailService, Inject]
 tokens: Annotated[PasswordResetTokens, Inject]
+projections: Annotated[Projections, Inject]
 
 
 @Get("/login/test-token")
 @Secured(SecurityRule.IS_AUTHENTICATED)
 def test_token(authentication: Authentication) -> UserPublic:
     """Verify an access token and return the user it belongs to."""
-    return user_public(users.by_id(UUID(str(authentication.getName()))))
+    return projections.user_public(users.by_id(UUID(str(authentication.getName()))))
 
 
 @Post("/password-recovery/{email}")

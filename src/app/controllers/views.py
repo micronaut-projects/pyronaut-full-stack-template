@@ -28,7 +28,7 @@ from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
 from micronaut.views import View
 
-from ..mappers import item_public, user_public
+from ..mappers import Projections
 from ..paging import page_request
 from ..security.current import CurrentUser
 from ..services.items import ItemService
@@ -39,6 +39,7 @@ APP_VIEW = "App"
 users: Annotated[UserService, Inject]
 items: Annotated[ItemService, Inject]
 current: Annotated[CurrentUser, Inject]
+projections: Annotated[Projections, Inject]
 
 
 def _model(page: str, **data) -> dict:
@@ -85,7 +86,7 @@ def reset_password_page(token: Annotated[str, QueryValue(defaultValue="")] = "")
 @Secured(SecurityRule.IS_AUTHENTICATED)
 def dashboard_page(authentication: Authentication) -> dict:
     """The dashboard."""
-    return _model("dashboard", user=user_public(current.of(authentication)))
+    return _model("dashboard", user=projections.user_public(current.of(authentication)))
 
 
 @Get("/items")
@@ -97,8 +98,8 @@ def items_page(authentication: Authentication) -> dict:
     result = items.list_for(user, page_request())
     return _model(
         "items",
-        user=user_public(user),
-        items=[item_public(item) for item in result.getContent()],
+        user=projections.user_public(user),
+        items=[projections.item_public(item) for item in result.getContent()],
         count=result.getTotalSize(),
     )
 
@@ -108,7 +109,7 @@ def items_page(authentication: Authentication) -> dict:
 @Secured(SecurityRule.IS_AUTHENTICATED)
 def settings_page(authentication: Authentication) -> dict:
     """The account settings screen."""
-    return _model("settings", user=user_public(current.of(authentication)))
+    return _model("settings", user=projections.user_public(current.of(authentication)))
 
 
 @Get("/admin")
@@ -119,7 +120,7 @@ def admin_page(authentication: Authentication) -> dict:
     result = users.page(page_request())
     return _model(
         "admin",
-        user=user_public(current.of(authentication)),
-        users=[user_public(user) for user in result.getContent()],
+        user=projections.user_public(current.of(authentication)),
+        users=[projections.user_public(user) for user in result.getContent()],
         count=result.getTotalSize(),
     )

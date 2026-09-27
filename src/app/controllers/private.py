@@ -29,7 +29,7 @@ from micronaut.security.annotation import Secured
 from micronaut.security.rules import SecurityRule
 
 from ..dto import UserCreate
-from ..mappers import user_public
+from ..mappers import Projections
 from ..services.users import EmailAlreadyUsed, UserService
 
 Controller("/api/v1/private")
@@ -37,6 +37,7 @@ Requires(env=["dev", "test"])
 Secured(SecurityRule.IS_ANONYMOUS)
 
 users: Annotated[UserService, Inject]
+projections: Annotated[Projections, Inject]
 
 
 @Post("/users")
@@ -51,6 +52,6 @@ def create_user_directly(body: Annotated[UserCreate, Body, Valid]) -> HttpRespon
         user = users.create(body)
     except EmailAlreadyUsed:
         return HttpResponse.status(HttpStatus.CONFLICT).body(
-            user_public(users.by_email(body.email))
+            projections.user_public(users.by_email(body.email))
         )
-    return HttpResponse.status(HttpStatus.CREATED).body(user_public(user))
+    return HttpResponse.status(HttpStatus.CREATED).body(projections.user_public(user))

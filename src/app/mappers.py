@@ -1,44 +1,59 @@
-"""Entity to DTO mapping.
+"""Entity to DTO projections.
 
-Entities carry Java types — ``java.util.UUID`` keys and ``java.time.Instant``
-timestamps — because that is what Micronaut Data reads and writes. The public
-API speaks strings, so the conversion happens here rather than being repeated in
-every controller.
+The single-entity projections are compile-time bean mappers: an abstract method
+annotated ``@Mapper`` on a ``Protocol``, whose implementation Micronaut generates
+during ``pyronaut process``. The conversions the public shapes need come for
+free — ``java.util.UUID`` and ``java.time.Instant`` become the ``str`` fields the
+DTOs declare, and a source property the target does not have, such as
+``hashedPassword``, is simply not carried across.
+
+``ownerId`` is the one field that needs saying out loud, because it comes from a
+relation rather than a property of the same name.
+
+``Projections`` exists because the route modules are modules: they have no
+constructor to thread two mapper beans through, and the list envelopes are not
+mapper work. One bean to inject, and the call shape stays ``user_public(user)``.
 """
+
+from typing import Protocol
+
+from jakarta.inject import Singleton
+from micronaut.context.annotation import Mapper
 
 from .dto import ItemPublic, ItemsPublic, UserPublic, UsersPublic
 from .entities import Item, User
 
 
-def _text(value) -> str | None:
-    return None if value is None else str(value)
+@Singleton
+class UserMapper(Protocol):
+    @Mapper
+    def to_public(self, user: User) -> UserPublic: ...
 
 
-def user_public(user: User) -> UserPublic:
-    """Public projection of a user. Never includes the password hash."""
-    return UserPublic(
-        id=_text(user.id),
-        email=user.email,
-        isActive=user.isActive,
-        isSuperuser=user.isSuperuser,
-        fullName=user.fullName,
-        createdAt=_text(user.createdAt),
-    )
+@Singleton
+class ItemMapper(Protocol):
+    # The owner is a MANY_TO_ONE relation, so there is no `ownerId` on the entity
+    # for the mapper to match by name.
+    @Mapper.Mapping(to="ownerId", from_="#{item.owner.id}")
+    @Mapper
+    def to_public(self, item: Item) -> ItemPublic: ...
 
 
-def users_public(users, count: int) -> UsersPublic:
-    return UsersPublic(data=[user_public(user) for user in users], count=int(count))
+@Singleton
+class Projections:
+    def __init__(self, users: UserMapper, items: ItemMapper):
+        self.users = users
+        self.items = items
 
+    def user_public(self, user: User) -> UserPublic:
+        """Public projection of a user. Never includes the password hash."""
+        return self.users.to_public(user)
 
-def item_public(item: Item) -> ItemPublic:
-    return ItemPublic(
-        id=_text(item.id),
-        title=item.title,
-        ownerId=_text(item.owner.id) if item.owner is not None else None,
-        description=item.description,
-        createdAt=_text(item.createdAt),
-    )
+    def users_public(self, users, count: int) -> UsersPublic:
+        return UsersPublic(data=[self.users.to_public(u) for u in users], count=int(count))
 
+    def item_public(self, item: Item) -> ItemPublic:
+        return self.items.to_public(item)
 
-def items_public(items, count: int) -> ItemsPublic:
-    return ItemsPublic(data=[item_public(item) for item in items], count=int(count))
+    def items_public(self, items, count: int) -> ItemsPublic:
+        return ItemsPublic(data=[self.items.to_public(i) for i in items], count=int(count))

@@ -32,7 +32,7 @@ from ..dto import (
     UserUpdateMe,
     UsersPublic,
 )
-from ..mappers import user_public, users_public
+from ..mappers import Projections
 from ..paging import DEFAULT_PAGE_SIZE, page_request
 from ..security.current import CurrentUser
 from ..security.provider import ROLE_SUPERUSER
@@ -45,6 +45,7 @@ Secured(SecurityRule.IS_AUTHENTICATED)
 users: Annotated[UserService, Inject]
 mail: Annotated[MailService, Inject]
 current: Annotated[CurrentUser, Inject]
+projections: Annotated[Projections, Inject]
 
 NOT_ALLOWED_SELF_DELETE = "Superusers are not allowed to delete themselves"
 
@@ -82,7 +83,7 @@ def list_users(
     request.
     """
     result = users.page(page_request(page, size))
-    return users_public(result.getContent(), result.getTotalSize())
+    return projections.users_public(result.getContent(), result.getTotalSize())
 
 
 @Post
@@ -97,14 +98,14 @@ def create_user(body: Annotated[UserCreate, Body, Valid]) -> HttpResponse:
     except EmailAlreadyUsed:
         return _email_conflict()
     mail.send_new_account_email(user.email, user.email, body.password)
-    return HttpResponse.status(HttpStatus.CREATED).body(user_public(user))
+    return HttpResponse.status(HttpStatus.CREATED).body(projections.user_public(user))
 
 
 # -- the authenticated user -------------------------------------------
 @Get("/me")
 def read_me(authentication: Authentication) -> UserPublic:
     """Return the currently authenticated user."""
-    return user_public(current.of(authentication))
+    return projections.user_public(current.of(authentication))
 
 
 @Patch("/me")
@@ -112,7 +113,7 @@ def update_me(
     authentication: Authentication, body: Annotated[UserUpdateMe, Body, Valid]
 ) -> UserPublic:
     """Update the authenticated user's own name or email."""
-    return user_public(users.update_me(current.of(authentication), body))
+    return projections.user_public(users.update_me(current.of(authentication), body))
 
 
 @Patch("/me/password")
@@ -162,7 +163,7 @@ def signup(body: Annotated[UserRegister, Body, Valid]) -> HttpResponse:
         user = users.register(body)
     except EmailAlreadyUsed:
         return _email_conflict()
-    return HttpResponse.status(HttpStatus.CREATED).body(user_public(user))
+    return HttpResponse.status(HttpStatus.CREATED).body(projections.user_public(user))
 
 
 # -- by id --------------------------------------------------------------
@@ -179,7 +180,7 @@ def read_user(userId: UUID, authentication: Authentication) -> HttpResponse:
             Message(message="The user doesn't have enough privileges")
         )
     user = users.by_id(userId)
-    return HttpResponse.notFound() if user is None else HttpResponse.ok(user_public(user))
+    return HttpResponse.notFound() if user is None else HttpResponse.ok(projections.user_public(user))
 
 
 @Patch("/{userId}")
@@ -190,7 +191,7 @@ def update_user(userId: UUID, body: Annotated[UserUpdate, Body, Valid]) -> HttpR
     if user is None:
         return HttpResponse.notFound()
     try:
-        return HttpResponse.ok(user_public(users.update(user, body)))
+        return HttpResponse.ok(projections.user_public(users.update(user, body)))
     except EmailAlreadyUsed:
         return _email_conflict()
 

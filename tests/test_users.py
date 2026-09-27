@@ -1,5 +1,7 @@
 """User management, registration and authorisation rules."""
 
+from datetime import datetime
+
 from conftest import SUPERUSER_EMAIL
 
 
@@ -101,3 +103,15 @@ def test_a_superuser_may_not_delete_themselves(superuser_client):
     response = superuser_client.delete(f"/api/v1/users/{me['id']}")
     assert response.status_code == 400
     assert "delete themselves" in response.json()["message"]
+
+def test_created_at_is_iso_8601(superuser_client):
+    """The published timestamp must be parseable by an ordinary client.
+
+    Worth pinning because it was not: the projection used to be str() on a
+    coerced datetime, which yields '2026-09-27 10:25:36.029085+00:00' -- a space
+    where ISO-8601 wants a T, which Date.parse is not obliged to accept. The
+    bean mapper in app/mappers.py converts the Instant properly.
+    """
+    created_at = superuser_client.get("/api/v1/users/me").json()["createdAt"]
+    assert "T" in created_at, created_at
+    datetime.fromisoformat(created_at)  # raises if it is not ISO-8601

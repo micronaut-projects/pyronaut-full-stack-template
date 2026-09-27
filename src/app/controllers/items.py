@@ -21,7 +21,7 @@ from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
 
 from ..dto import ItemCreate, ItemUpdate, ItemsPublic, Message
-from ..mappers import item_public, items_public
+from ..mappers import Projections
 from ..paging import DEFAULT_PAGE_SIZE, page_request
 from ..security.current import CurrentUser
 from ..services.items import ItemService
@@ -31,6 +31,7 @@ Secured(SecurityRule.IS_AUTHENTICATED)
 
 items: Annotated[ItemService, Inject]
 current: Annotated[CurrentUser, Inject]
+projections: Annotated[Projections, Inject]
 
 FORBIDDEN = Message(message="The user doesn't have enough privileges")
 
@@ -62,7 +63,7 @@ def list_items(
     Paginated with `page` and `size`.
     """
     result = items.list_for(current.of(authentication), page_request(page, size))
-    return items_public(result.getContent(), result.getTotalSize())
+    return projections.items_public(result.getContent(), result.getTotalSize())
 
 
 @Get("/{itemId}")
@@ -73,7 +74,7 @@ def read_item(itemId: UUID, authentication: Authentication) -> HttpResponse:
     someone else.
     """
     item, refusal = _accessible(itemId, authentication)
-    return refusal or HttpResponse.ok(item_public(item))
+    return refusal or HttpResponse.ok(projections.item_public(item))
 
 
 @Post
@@ -82,7 +83,7 @@ def create_item(
 ) -> HttpResponse:
     """Create an item owned by the authenticated user."""
     item = items.create(body, current.of(authentication))
-    return HttpResponse.status(HttpStatus.CREATED).body(item_public(item))
+    return HttpResponse.status(HttpStatus.CREATED).body(projections.item_public(item))
 
 
 @Put("/{itemId}")
@@ -93,7 +94,7 @@ def update_item(
 ) -> HttpResponse:
     """Update an item. Only the owner, or a superuser, may do so."""
     item, refusal = _accessible(itemId, authentication)
-    return refusal or HttpResponse.ok(item_public(items.update(item, body)))
+    return refusal or HttpResponse.ok(projections.item_public(items.update(item, body)))
 
 
 @Delete("/{itemId}")
