@@ -6,7 +6,6 @@
 // emails need no Node process and no build-time HTML compilation — they are
 // rendered by the same GraalJS context as the pages.
 import 'web-streams-polyfill/dist/polyfill';
-import './polyfills';
 
 import React from 'react';
 import * as ReactDOMServer from 'react-dom/server.browser';

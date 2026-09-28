@@ -6,8 +6,8 @@ architectural decisions; most of them have already been made and justified there
 
 ## State
 
-The application runs and the suite is green: **36 tests, 0 failures, 0 skipped**
-(29 API, 7 browser) on Pyronaut 0.0.5 and Micronaut Views 6.3.0. `pyronaut install`,
+The application runs and the suite is green: **38 tests, 0 failures, 0 skipped**
+(31 API, 7 browser) on Pyronaut 0.0.5 and Micronaut Views 6.3.1. `pyronaut install`,
 `process`, `dev` and `test` all pass against a real MySQL from Test Resources:
 Flyway applies the schema, the first superuser is seeded, login issues a JWT cookie,
 the React 19 pages server-render on GraalJS, emails render from the same bundle and
@@ -85,13 +85,17 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   the cause: annotation metadata lives in the bean definition rather than in
   the generated source, which is how `@Controller` and `@Secured` reach the
   runtime.
-- **The frontend is React 19, and the `MessageChannel` shim is upstream now.**
-  `micronaut-views-react` 6.3.0 installs it in `host-polyfills.js`, evaluated before the server
-  bundle ([#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)) — React 19's
-  scheduler will not run without it, and GraalJS has neither it nor `setTimeout`. What is still in
-  `frontend/polyfills.js` is `URL` and `URLSearchParams`, which React Router needs and which are
-  measured to be load-bearing: remove them and every server-rendered route returns 500. Sent
-  upstream as [#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208).
+- **The frontend is React 19, and every SSR polyfill it needs is upstream now** — so there is no
+  `frontend/polyfills.js` any more, and do not reintroduce one without checking
+  `host-polyfills.js` in the `micronaut-views-react` jar first. The module installs them there,
+  evaluated before the server bundle: `MessageChannel` in 6.3.0, without which React 19's
+  scheduler will not run ([#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)),
+  and `URL`/`URLSearchParams` in 6.3.1, which React Router reaches for while server rendering
+  ([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)). GraalJS has none of
+  the three, nor `setTimeout`. All of them are load-bearing rather than defensive: on 6.3.0, removing
+  the hand-rolled `URL` pair returned 500 from every server-rendered route.
+  Note that `npm run verify:ssr` cannot catch that class of regression — it runs on Node, which has
+  these globals natively. The browser tests in `LoginFlowTest.py` are what actually exercise them.
   React 19 also needs `hydrate-without-request = false`, or its extra
   `<link rel="preload" as="script">` lands in email bodies
   ([#1199](https://github.com/micronaut-projects/micronaut-views/issues/1199)); `config/application.toml`
@@ -221,10 +225,10 @@ Gaps found here go back to their home repositories as **draft PRs**, not local
 workarounds. PLAN.md §12 has the tracked list, and the README has a table of what
 each fix shipped in.
 
-The template now carries **no** workaround for an upstream bug. Three draft PRs are
-open and the two things still missing are named at their point of use:
-[micronaut-views#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)
-(`URL`/`URLSearchParams` into `host-polyfills.js`),
+The template now carries **no** workaround for an upstream bug, and no polyfill of its
+own since Views 6.3.1 took the last two
+([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)). Two draft PRs
+are open and both are named at their point of use:
 [pyronaut#215](https://github.com/micronaut-projects/pyronaut/pull/215) (four-part
 coordinates in the test-resources-server scope) and
 [micronaut-core#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)

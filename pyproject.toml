@@ -83,7 +83,7 @@ runtime = [
   'io.micronaut.email:micronaut-email-javamail',
   'io.micronaut.email:micronaut-email-template',
   'org.eclipse.angus:angus-mail',
-  'io.micronaut.views:micronaut-views-react:6.3.0',
+  'io.micronaut.views:micronaut-views-react:6.3.1',
   # GraalJS, pinned to the GraalVM the project builds against.
   #
   # The obvious coordinate is `org.graalvm.polyglot:js`, which is what the
@@ -104,7 +104,7 @@ development-runtime = [
   # environment and `micronaut.views.react.dev.enabled`, which
   # config/application-dev.toml already sets.
   #
-  'io.micronaut.views:micronaut-views-react-dev:6.3.0',
+  'io.micronaut.views:micronaut-views-react-dev:6.3.1',
   # macOS file watching falls back to a slow polling implementation without this:
   # no watch event arrived in over two minutes without it. pyronaut#190 tracks
   # having the CLI add it automatically on macOS.

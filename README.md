@@ -4,7 +4,7 @@ A port of [`fastapi/full-stack-fastapi-template`](https://github.com/fastapi/ful
 to [Pyronaut](https://github.com/micronaut-projects/pyronaut): the same application, written in the
 same language, with fewer moving parts.
 
-> **Status: working, incomplete.** The application runs, and `pyronaut test` is green: 36 tests
+> **Status: working, incomplete.** The application runs, and `pyronaut test` is green: 38 tests
 > across the API and a real browser, on Pyronaut 0.0.5 and Micronaut Views 6.3.0. The frontend is a
 > deliberately plain React 19 stack — see
 > [Current state](#current-state) for what is still missing. The full design and its open questions
@@ -61,10 +61,10 @@ and the lifecycle is `pyronaut test` / `pyronaut build`.
 
 ```
 $ pyronaut test
-36 tests passed in 44s
+38 tests passed in 45.9s
 ```
 
-29 API tests and 7 browser tests, in one run, against one embedded server, with a real MySQL and
+31 API tests and 7 browser tests, in one run, against one embedded server, with a real MySQL and
 a real Mailpit. Upstream runs Playwright separately against a Vite server with
 `PLAYWRIGHT_BASE_URL` plumbing to connect the two.
 
@@ -130,17 +130,16 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
 - **The frontend is React 19.** It renders on GraalJS in 20.4ms against React 18's 18.6ms — the same
   within noise. Two things had to land first, both in Views 6.3.0: the `MessageChannel` shim React 19's
   scheduler needs, which the module now installs itself
-  ([micronaut-views#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)), and
+  ([micronaut-views#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)) — joined in
+  6.3.1 by the `URL` and `URLSearchParams` globals React Router reaches for while server rendering
+  ([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)), so the project now carries
+  no SSR polyfill of its own — and
   `hydrate-without-request`, without which React 19's extra `<link rel="preload" as="script">` landed in
   email bodies ([#1199](https://github.com/micronaut-projects/micronaut-views/issues/1199),
   [#1200](https://github.com/micronaut-projects/micronaut-views/pull/1200)). The earlier claim in this
   file that React 19 was three orders of magnitude slower was wrong, and so was blaming
   `web-streams-polyfill`; both are corrected on
   [#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198).
-- **`URL` and `URLSearchParams` are still hand-rolled.** `frontend/polyfills.js` supplies the WHATWG
-  subset React Router uses while server rendering; GraalJS has neither. Measured, not guessed: remove
-  them and every server-rendered route returns 500. Every Pyronaut project doing React SSR carries its
-  own copy, so they belong upstream next to `MessageChannel`.
 - **Throughput and startup are unmeasured.** The concurrency argument — GraalPy context pooling
   instead of a worker fleet — is inherited from the design and has not been benchmarked here.
   Treat it as a claim to test, not a result.
@@ -163,8 +162,10 @@ them are now fixed and released, and the template carries no workaround for any 
 | React 19 did not render at all on GraalJS: `ReferenceError: MessageChannel is not defined` ([#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198)) | Views 6.3.0 ([#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)) |
 | A `file:` server bundle killed the file watcher at startup, silently, so nothing reloaded ([#1203](https://github.com/micronaut-projects/micronaut-views/pull/1203)) | Views 6.3.0 |
 | Nothing told the browser about a rebuild ([#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197)) | Views 6.3.0 ([#1204](https://github.com/micronaut-projects/micronaut-views/pull/1204)) |
+| `URL` and `URLSearchParams` were hand-rolled in every Pyronaut project doing React SSR, the petclinic included, because React Router needs them while server rendering and GraalJS has neither — without them every server-rendered route returned 500 | Views 6.3.1 ([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)) |
 
-Two are still open. An annotation the processor cannot read from source is dropped silently, taking its
+Two are still open, neither of them a workaround the template carries. An annotation the processor
+cannot read from source is dropped silently, taking its
 validation constraint with it ([pyronaut#173](https://github.com/micronaut-projects/pyronaut/issues/173),
 [micronaut-core#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)) — so write
 annotations out in full rather than factoring them into a constant. And while a POM-only coordinate can
@@ -264,7 +265,7 @@ Generated bundles, `__pyronaut__/`, `.micronaut/` and `node_modules/` are not co
 
 ```
 $ pyronaut test
-36 tests passed in 44s
+38 tests passed in 45.9s
 ```
 
 The `pyronaut` CLI is not on PyPI yet; it is published as a wheel on the
