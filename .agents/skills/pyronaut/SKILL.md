@@ -94,7 +94,8 @@ Getting `process` to pass is not evidence that anything works. Run `pyronaut dev
 | `Custom __init__.py files are not supported` | Delete it; Micronaut generates them |
 | Dependency fails to resolve as a jar | POM-only artifact — declare the concrete jars it aggregates |
 | `must be static unless ... @TestInstance(Lifecycle.PER_CLASS)` | JUnit-Python lifecycle methods are instance methods; add `TestInstance(TestInstance.Lifecycle.PER_CLASS)` |
-| A Java method is unreachable from Python | Its name is a Python keyword. `Pageable.from(...)` needs `getattr(Pageable, "from")` |
+| A Java member is unreachable from Python | Its name is a Python keyword, so it takes a trailing underscore: `Pageable.from(...)` is written `Pageable.from_(...)` |
+| `Cannot import [Mapping] ... is not on the compile classpath` | A nested Java annotation has no top-level type. Reach it through its enclosing type: `@Mapper.Mapping(...)` |
 | Cannot use a Python exception as an `ExceptionHandler` type parameter | That bound is Java's `Throwable`. Catch it in the controller instead |
 
 ## Verification
@@ -105,4 +106,6 @@ pyronaut process     # compile; also writes the OpenAPI document
 pyronaut test        # the only step that proves anything runs
 ```
 
-Docstrings become OpenAPI documentation: the first sentence is the operation `summary`, the whole docstring the `description`. Write them for the person calling the endpoint. Swagger annotations such as `@Tag` are **not** currently honoured — the compiler cannot resolve any `io.`-prefixed package other than `io.micronaut` (micronaut-core#13345).
+Docstrings become OpenAPI documentation: the first sentence is the operation `summary`, the whole docstring the `description`. Write them for the person calling the endpoint. Swagger annotations such as `@Tag` work as well, since Core 5.2.5 ([micronaut-core#13345](https://github.com/micronaut-projects/micronaut-core/pull/13345)) — before that the compiler could not resolve any `io.`-prefixed package other than `io.micronaut`, and they were dropped silently.
+
+Operation ids must be unique across the whole API. A collision is not an error: Micronaut OpenAPI appends a number, and a generated client grows a `signup1` whose digit depends on declaration order.

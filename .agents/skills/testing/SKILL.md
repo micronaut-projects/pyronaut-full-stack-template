@@ -105,9 +105,9 @@ Reaching for a Compose file means something has gone wrong.
 
 ### 3) Do not depend on data another test can change
 
-The pytest integration does **not** implement per-test transactions: `transactional`, `rollback` and `rebuild_context` are accepted and have no effect. With a shared Test Resources server the database also outlives the run.
+`transactional` and `rollback` work — they were accepted and ignored until Pyronaut 0.0.4 ([pyronaut#181](https://github.com/micronaut-projects/pyronaut/pull/181)) — but they do not help an HTTP-level test. A rolled-back *test* transaction does not undo what the embedded server wrote on its own threads, in its own transactions, in response to a request. With a reusable Test Resources server the database also outlives the run.
 
-So: generate unique values rather than relying on a clean table, and assert on shape rather than on specific data another test might mutate.
+So for anything driven through a client: generate unique values rather than relying on a clean table, and assert on shape rather than on specific data another test might mutate. Reach for `transactional` when the test calls a service or repository directly.
 
 ```python
 # Fragile: the API suite renames this user

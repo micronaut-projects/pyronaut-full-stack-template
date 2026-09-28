@@ -6,18 +6,19 @@ afterwards.
 
 Test isolation note
 -------------------
-``transactional``, ``rollback`` and ``rebuild_context`` are accepted by the
-pytest integration and have no effect — measured, not assumed: a row written in
-one test is still there in the next
-(https://github.com/micronaut-projects/pyronaut/issues/174).
+``transactional`` is off deliberately, and not because it is broken: it was
+accepted and ignored until Pyronaut 0.0.4
+(https://github.com/micronaut-projects/pyronaut/pull/181), and it works now.
 
-So isolation here is arranged by hand. Tests never assume an empty table and
-never assert on a global row count; anything that has to be unique comes from
-the ``unique_email`` fixture. When #174 is fixed, the honest simplification is
-to make ``application_context`` transactional and delete those precautions --
-but note that a rolled-back test transaction would not cover work done by the
-embedded server on its own threads, so the HTTP-level tests would still need
-``unique_email``.
+It would not help here. Every test in this suite goes through an HTTP client, so
+the writes happen on the embedded server's own threads in its own transactions,
+and rolling back the *test's* transaction leaves them in place. With a reusable
+Test Resources server the database outlives the run as well.
+
+So isolation is arranged by hand and stays that way. Tests never assume an empty
+table and never assert on a global row count; anything that has to be unique
+comes from the ``unique_email`` fixture. A test that called a service or
+repository directly could use ``transactional`` instead.
 """
 
 import uuid
