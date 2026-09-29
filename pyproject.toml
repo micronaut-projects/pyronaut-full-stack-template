@@ -20,8 +20,8 @@ type = 'jvm'
 repositories = ['mavenCentral']
 # Pinned to match the versions the Pyronaut CLI itself is built against;
 # see gradle.properties in micronaut-projects/pyronaut.
-core.version = '5.2.5'
-platform.version = '5.1.0'
+core.version = '5.2.9'
+platform.version = '5.2.0'
 
 [tool.pyronaut.control-panel]
 enabled = true
@@ -84,16 +84,13 @@ runtime = [
   'io.micronaut.email:micronaut-email-template',
   'org.eclipse.angus:angus-mail',
   'io.micronaut.views:micronaut-views-react:6.3.1',
-  # GraalJS, pinned to the GraalVM the project builds against.
-  #
-  # The obvious coordinate is `org.graalvm.polyglot:js`, which is what the
-  # petclinic declares — but that artifact is POM-only, and Pyronaut resolves
-  # every project dependency as a jar (MavenClasspathResolver hardcodes the
-  # "jar" extension), so it cannot be declared. These are the concrete jars the
-  # aggregator POM pulls in. See PLAN.md section 12.
-  'org.graalvm.polyglot:polyglot:25.4.4.1.1',
-  'org.graalvm.js:js-language:25.4.4.1.1',
-  'org.graalvm.truffle:truffle-runtime:25.4.4.1.1',
+  # GraalJS, pinned to the GraalVM the project builds against. The aggregator is
+  # POM-only, so it takes the four-part form — a three-part coordinate is
+  # resolved as a jar and fails. This needs Pyronaut 0.0.6, which accepts the
+  # four-part form in the test-resources-server scope too (pyronaut#215); 0.0.5
+  # accepted it everywhere else (pyronaut#170). Before that this had to be
+  # spelled out as the three concrete jars the aggregator pulls in.
+  'org.graalvm.polyglot:js:pom:25.4.4.1.1',
   'io.micronaut.pyronaut:micronaut-pyronaut-logback',
 ]
 development-runtime = [
@@ -105,9 +102,10 @@ development-runtime = [
   # config/application-dev.toml already sets.
   #
   'io.micronaut.views:micronaut-views-react-dev:6.3.1',
-  # macOS file watching falls back to a slow polling implementation without this:
-  # no watch event arrived in over two minutes without it. pyronaut#190 tracks
-  # having the CLI add it automatically on macOS.
+  # `micronaut-runtime-osx` used to be listed here: without it macOS file watching
+  # falls back to a slow polling implementation, and no watch event arrived in over
+  # two minutes. The CLI now adds it on macOS in this scope by itself
+  # (pyronaut#190), so it is gone from here.
 ]
 build = [
   'io.micronaut:micronaut-context-python',

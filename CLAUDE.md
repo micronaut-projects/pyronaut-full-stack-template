@@ -7,7 +7,7 @@ architectural decisions; most of them have already been made and justified there
 ## State
 
 The application runs and the suite is green: **38 tests, 0 failures, 0 skipped**
-(31 API, 7 browser) on Pyronaut 0.0.5 and Micronaut Views 6.3.1. `pyronaut install`,
+(31 API, 7 browser) on Pyronaut 0.0.6 (Core 5.2.9) and Micronaut Views 6.3.1. `pyronaut install`,
 `process`, `dev` and `test` all pass against a real MySQL from Test Resources:
 Flyway applies the schema, the first superuser is seeded, login issues a JWT cookie,
 the React 19 pages server-render on GraalJS, emails render from the same bundle and
@@ -33,14 +33,23 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   `micronaut.context.event`**, not `micronaut.runtime.event`. When an import
   fails at runtime, grep `__pyronaut__/ide-stubs/` for the class name rather
   than guessing from the Java package.
-- **An annotation the processor cannot read from source is dropped silently**
-  (pyronaut#173). The boundary was measured: a bare name for a scalar argument
-  resolves (`Size(min=MIN_PASSWORD, ...)` keeps `minLength: 8`); a call
-  expression does not (`QueryValue(defaultValue=str(SIZE))` loses the member,
-  and the parameter is published `required: true`); and an annotation bound to
-  a name does not (`PASSWORD = Size(min=8, max=128)` used as
-  `Annotated[str, NotBlank, PASSWORD]` leaves the field with no length
-  constraint at all). Write annotations out in full.
+- **An annotation the processor cannot read is now a compile error, not a silent
+  drop.** Fixed in Core 5.2.9
+  ([micronaut-core#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)),
+  and re-measured on 0.0.6 — all three boundaries, since this used to be the worst
+  trap in the project:
+  - an annotation bound to a name (`PASSWORD = Size(min=8, max=128)` used as
+    `Annotated[str, NotBlank, PASSWORD]`) fails processing with *"[PASSWORD] in
+    Annotated[...] is a name bound to [Size(min=8, max=128)], not an annotation …
+    Write the annotation inline."*
+  - a call expression as an argument (`QueryValue(defaultValue=str(SIZE))`) fails
+    with *"is not a compile-time constant … use a literal."*
+  - a bare name for a scalar argument still **works**, and always did:
+    `Size(min=MIN_PASSWORD, max=128)` keeps `minLength: 8` in the OpenAPI document.
+
+  So the rule is no longer "write everything out in full or lose it silently". Both
+  dangerous forms now stop the build and name the fix; a constant for a scalar
+  argument is fine.
 - **A Python exception cannot be an `ExceptionHandler` type parameter.** That
   bound is Java's `Throwable`. Catch Python exceptions in the controller.
 - **A POM-only coordinate needs the four-part form**, `group:artifact:pom:version` — a
@@ -118,7 +127,7 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
 | --- | --- |
 | GraalVM `25.4.4+1-graal` | Pyronaut's toolchain minimum is 25, but the Crema native build and GraalPy both want this exact build. Set `JAVA_HOME` to it — a stale Gradle daemon on another JDK fails the native build with `Could not find required field OptimizedDirectCallNode.callCount` |
 | GraalPy `graalpy3.13-25.4.4` | Pinned in pyronaut's own `gradle.properties`. The version must match the GraalVM the project builds against and the one Pyronaut was built with — a mismatch shows up as `Unknown operation code 0` or an NPE creating the GraalPy context, not as a version error |
-| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.5`). Clearing `~/.pyronaut/setup/<version>` means re-running `pyronaut setup`; a dependency change does too |
+| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.6`). Clearing `~/.pyronaut/setup/<version>` means re-running `pyronaut setup`; a dependency change does too |
 | Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers. On Podman, Ryuk cannot bind-mount the machine's API socket (`operation not supported`), which fails only the Mailpit test — run with `TESTCONTAINERS_RYUK_DISABLED=true`. The `ryuk.disabled` property in `~/.testcontainers.properties` is **not** honoured by Testcontainers 2.x; only the environment variable works |
 | Node.js 22 + npm | Bundling only — not needed at runtime |
 
@@ -225,15 +234,16 @@ Gaps found here go back to their home repositories as **draft PRs**, not local
 workarounds. PLAN.md §12 has the tracked list, and the README has a table of what
 each fix shipped in.
 
-The template now carries **no** workaround for an upstream bug, and no polyfill of its
-own since Views 6.3.1 took the last two
-([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)). Two draft PRs
-are open and both are named at their point of use:
-[pyronaut#215](https://github.com/micronaut-projects/pyronaut/pull/215) (four-part
-coordinates in the test-resources-server scope) and
-[micronaut-core#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)
-(an annotation the processor cannot read is dropped silently — so write annotations
-out in full rather than factoring them into a constant).
+The template carries **no** workaround for an upstream bug and no polyfill of its own,
+and as of Pyronaut 0.0.6 there is nothing left open on the tracked list. The last four
+landed together: Views 6.3.1 took the URL polyfills
+([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)), Pyronaut
+0.0.6 took POM-only coordinates in the test-resources-server scope
+([#215](https://github.com/micronaut-projects/pyronaut/pull/215)) and the nested
+annotation stubs ([#226](https://github.com/micronaut-projects/pyronaut/pull/226)), and
+Core 5.2.9 took both the unreadable-annotation report
+([#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)) and module
+route pooling ([#13488](https://github.com/micronaut-projects/micronaut-core/pull/13488)).
 
 `setup-pyronaut` still has no `v1` tag and its `main` is an empty commit, which is a
 maintainer action rather than something that can be sent as a PR. It blocks CI here.

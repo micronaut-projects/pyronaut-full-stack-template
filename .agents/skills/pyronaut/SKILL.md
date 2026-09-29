@@ -51,24 +51,28 @@ A wrong import compiles and fails at context startup with `ModuleNotFoundError`,
 
 ### 2) Write annotations with literal arguments only
 
-**This is the highest-value rule in this skill.** The processor reads annotations from source; it does not evaluate them. Anything it cannot read is discarded without a warning (pyronaut#173).
-
-A bare name for a scalar argument *does* resolve — `Size(min=MIN_PASSWORD, max=128)` keeps its lower bound — which is exactly why the two forms below are so easy to reach for.
+The processor reads annotations from source; it does not evaluate them. Since Core 5.2.9 ([micronaut-core#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)) an argument it cannot read **fails the build** and names the fix. Before that it was discarded without a warning, which made this the worst trap in the model: a dropped `Size` on a password field compiled, started and served.
 
 ```python
-# WRONG — the constraint silently disappears, and the API accepts anything
+# FAILS PROCESSING — "[PASSWORD] ... is a name bound to [Size(min=8, max=128)],
+# not an annotation ... Write the annotation inline."
 PASSWORD = Size(min=8, max=128)
 password: Annotated[str, NotBlank, PASSWORD]
 
-# WRONG — the default is dropped, and the parameter is published as required
+# FAILS PROCESSING — "The value [str(DEFAULT_SIZE)] of member [defaultValue] of
+# @QueryValue is not a compile-time constant ... use a literal."
 size: Annotated[int, QueryValue(defaultValue=str(DEFAULT_SIZE))] = DEFAULT_SIZE
 
-# RIGHT — repetitive, and correct
+# RIGHT
 password: Annotated[str, NotBlank, Size(min=8, max=128, message="...")]
 size: Annotated[int, QueryValue(defaultValue="100")] = DEFAULT_SIZE
+
+# ALSO RIGHT — a bare name for a *scalar* argument resolves, and always did.
+# Measured on 0.0.6: `minLength: 8` reaches the OpenAPI document.
+password: Annotated[str, NotBlank, Size(min=MIN_PASSWORD, max=128)]
 ```
 
-Failures here are invisible: the code reads correctly, compiles, starts, and serves. A dropped `Size` on a password field is a security bug that only a test will find. Write every constraint out in full, and add a test that asserts the constraint rejects bad input.
+So the failure mode is now loud. Write an annotation inline rather than binding it to a name, and do not compute an argument — but a constant for a scalar argument is fine. On an older Core, treat this as the silent-failure rule it used to be and add a test that asserts the constraint rejects bad input.
 
 ### 3) Keep cross-package imports one-directional
 

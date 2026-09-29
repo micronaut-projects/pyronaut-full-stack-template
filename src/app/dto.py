@@ -20,10 +20,15 @@ from micronaut.serde.annotation import Serdeable
 #
 # Annotation arguments are read from source by the processor, not evaluated, so
 # a shared constant — `PASSWORD = Size(min=8, max=128)` used as
-# `Annotated[str, NotBlank, PASSWORD]` — is silently dropped. The field then has
-# no length constraint at all and the API happily accepts a four-character
-# password. The same rule bites computed `defaultValue` arguments; see
-# controllers/users.py. Repetition here is the safe option.
+# `Annotated[str, NotBlank, PASSWORD]` — cannot be read. Since Core 5.2.9 that
+# fails processing with a message naming the constant
+# (micronaut-core#13366); before it, the constraint vanished and the API happily
+# accepted a four-character password. The same rule bites computed
+# `defaultValue` arguments; see controllers/users.py.
+#
+# A bare name for a *scalar* argument does resolve — `Size(min=MIN_PASSWORD, ...)`
+# keeps its bound — so the repetition below is a style choice now rather than the
+# only safe option.
 
 
 # --------------------------------------------------------------------------

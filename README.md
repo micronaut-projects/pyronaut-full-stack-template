@@ -5,7 +5,7 @@ to [Pyronaut](https://github.com/micronaut-projects/pyronaut): the same applicat
 same language, with fewer moving parts.
 
 > **Status: working, incomplete.** The application runs, and `pyronaut test` is green: 38 tests
-> across the API and a real browser, on Pyronaut 0.0.5 and Micronaut Views 6.3.0. The frontend is a
+> across the API and a real browser, on Pyronaut 0.0.6 and Micronaut Views 6.3.1. The frontend is a
 > deliberately plain React 19 stack — see
 > [Current state](#current-state) for what is still missing. The full design and its open questions
 > are in [PLAN.md](./PLAN.md).
@@ -157,25 +157,26 @@ them are now fixed and released, and the template carries no workaround for any 
 | An id read off an entity was a Python `uuid.UUID`, so `findById` found nothing and `existsById` answered `False` for a row that was there ([#13382](https://github.com/micronaut-projects/micronaut-core/issues/13382)) | Core 5.2.7 ([#13385](https://github.com/micronaut-projects/micronaut-core/pull/13385)) |
 | JUnit tests built their context against the system classloader, so no project resource directory was reachable ([pyronaut#169](https://github.com/micronaut-projects/pyronaut/issues/169)) | Pyronaut 0.0.5 ([#171](https://github.com/micronaut-projects/pyronaut/pull/171)) |
 | The pytest integration accepted `transactional` and `rollback` and applied neither, because no `TestMethodInterceptor` ever ran ([pyronaut#174](https://github.com/micronaut-projects/pyronaut/issues/174)) | Pyronaut 0.0.4 ([#181](https://github.com/micronaut-projects/pyronaut/pull/181)) |
-| POM-only coordinates could not be declared ([pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166)) | Pyronaut 0.0.5 ([#170](https://github.com/micronaut-projects/pyronaut/pull/170)) — see the caveat below |
+| POM-only coordinates could not be declared ([pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166)) | Pyronaut 0.0.5 ([#170](https://github.com/micronaut-projects/pyronaut/pull/170)) |
 | An email body carried the whole view model, reset token included, because the renderer always appended the hydration bootstrap ([micronaut-views#1199](https://github.com/micronaut-projects/micronaut-views/issues/1199)) | Views 6.3.0 ([#1200](https://github.com/micronaut-projects/micronaut-views/pull/1200)) |
 | React 19 did not render at all on GraalJS: `ReferenceError: MessageChannel is not defined` ([#1198](https://github.com/micronaut-projects/micronaut-views/issues/1198)) | Views 6.3.0 ([#1201](https://github.com/micronaut-projects/micronaut-views/pull/1201)) |
 | A `file:` server bundle killed the file watcher at startup, silently, so nothing reloaded ([#1203](https://github.com/micronaut-projects/micronaut-views/pull/1203)) | Views 6.3.0 |
 | Nothing told the browser about a rebuild ([#1197](https://github.com/micronaut-projects/micronaut-views/issues/1197)) | Views 6.3.0 ([#1204](https://github.com/micronaut-projects/micronaut-views/pull/1204)) |
 | `URL` and `URLSearchParams` were hand-rolled in every Pyronaut project doing React SSR, the petclinic included, because React Router needs them while server rendering and GraalJS has neither — without them every server-rendered route returned 500 | Views 6.3.1 ([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)) |
 
-Two are still open, neither of them a workaround the template carries. An annotation the processor
-cannot read from source is dropped silently, taking its
-validation constraint with it ([pyronaut#173](https://github.com/micronaut-projects/pyronaut/issues/173),
-[micronaut-core#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)) — so write
-annotations out in full rather than factoring them into a constant. And while a POM-only coordinate can
-now be declared as `group:artifact:pom:version`, the Test Resources server scope still rejects the
-four-part form, so the GraalJS dependency in `pyproject.toml` remains three concrete jars.
+| An annotation the processor could not read was dropped silently, taking its validation constraint with it — a dropped `Size` on a password field compiled, started and served ([pyronaut#173](https://github.com/micronaut-projects/pyronaut/issues/173)) | Core 5.2.9 ([#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)) — it now fails processing and names the fix |
+| Nested Java annotations and enums were offered by the IDE stubs at module level under a name that could not be imported, and two of them could collapse onto one name ([pyronaut#222](https://github.com/micronaut-projects/pyronaut/issues/222)) | Pyronaut 0.0.6 ([#226](https://github.com/micronaut-projects/pyronaut/pull/226)) |
+| The Test Resources server scope rejected the four-part POM-only coordinate, so the GraalJS dependency had to be spelled out as three concrete jars ([pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166)) | Pyronaut 0.0.6 ([#215](https://github.com/micronaut-projects/pyronaut/pull/215)) |
+| A route module lost pooling to any module-level decorator that was not a scope, so every mounted controller module was singleton-scoped | Core 5.2.9 ([#13488](https://github.com/micronaut-projects/micronaut-core/pull/13488)) |
+
+Nothing on that list is still open, and the template carries no workaround for any of it. The one
+outstanding external blocker is not a code fix: `setup-pyronaut` has no `v1` tag and its `main` is an
+empty commit, which is what stops CI here.
 
 ## Requirements
 
 - A JVM Pyronaut SDK and the `pyronaut` CLI
-- GraalVM `25.4.4` and GraalPy `graalpy3.13-25.4.4` — the versions Pyronaut 0.0.5 is built against.
+- GraalVM `25.4.4` and GraalPy `graalpy3.13-25.4.4` — the versions Pyronaut 0.0.6 is built against.
   A mismatch surfaces as `Unknown operation code 0` or a Truffle initialisation failure, not as a
   version error
 - Node.js 22 and npm
