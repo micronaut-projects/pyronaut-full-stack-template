@@ -140,3 +140,35 @@ name = 'Pyronaut Full Stack Project'
 [micronaut.executors.blocking]
 type = 'CACHED'
 virtual = false
+
+# ---------------------------------------------------------------------------
+# GraalPy context pool.
+#
+# The default is `processors * 2`, which on a 12-core machine means 24 and
+# produces around 150 contexts under load. Measured against this application:
+# fewer contexts are substantially faster on any route that goes through a
+# Python bean, because a `@Singleton` service lives in one context while
+# requests are served on any of them, and a service with injected dependencies
+# cannot be pooled (a pooled type must be stateless with a no-argument
+# constructor). More contexts therefore mean a smaller share of requests landing
+# on the context that owns the bean.
+#
+# At 32 concurrent clients, `GET /api/v1/items?page=0&size=20`:
+#
+#   size = 24 (the default here)   847 req/s
+#   size = 8                       915 req/s
+#   size = 4                     1,238 req/s
+#   size = 3                     1,240 req/s
+#   size = 1                       586 req/s
+#
+# and `GET /api/v1/users/me` gains 37% between the default and 3.
+#
+# It is not JIT warmup: compiler CPU falls to well under 1% after the first
+# minute while throughput stays flat. See micronaut-core#13553.
+#
+# Four is a floor, not a universal answer -- the useful number depends on how
+# much Python work a request does and on the machine. Re-measure before trusting
+# it for a different workload; `micronaut-projects/pyronaut-fastapi-benchmark`
+# has the harness.
+[micronaut.python.pool]
+size = 4
