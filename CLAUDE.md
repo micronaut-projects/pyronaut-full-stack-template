@@ -16,7 +16,13 @@ are asserted through Mailpit, and hot reload refreshes the browser.
 Read a test count out of `__pyronaut__/reports/tests/junit.xml`, not off the exit
 code — see the note in *Upstream work* about tasks that skip silently.
 
-Still to do: benchmarking, the generated TypeScript client end to end, and CI.
+Benchmarked against the FastAPI original on 30 Sep 2026 — see the README, and the harness
+in the adjacent `pyronaut-fastapi-benchmark` project. It leads on all four comparable
+endpoints; it did not before, and closing that gap meant four upstream fixes rather than
+changes here. Re-measure with that harness rather than trusting the numbers, and read the
+fairness ledger first.
+
+Still to do: the generated TypeScript client end to end, and CI.
 
 ## Gotchas this project already paid for
 

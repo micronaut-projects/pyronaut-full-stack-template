@@ -138,6 +138,70 @@ through the single interpreter context the singleton lives in. So this is the or
 reach for Java here, and it is a narrow one: the rest of the application is Python because Python is
 where the application logic reads best.
 
+### It is faster than the original, and it was not at first
+
+Every endpoint gained between the template's previous release and this one, and three of the four
+gained a great deal. The work was not in this repository: benchmarking it found four upstream
+performance bugs, and the fixes shipped in Pyronaut 0.0.7 and Micronaut Core 5.2.10.
+
+| Endpoint | Before | Now | Change |
+| --- | --- | --- | --- |
+| `GET /api/v1/users/me` — JWT plus one indexed row | 2,856 req/s | **13,523** | **+374%** |
+| `POST /api/v1/items` — write, in a transaction | 745 req/s | **3,730** | **+400%** |
+| `GET /api/v1/items?page=0&size=20` — paged read | 1,267 req/s | **2,749** | **+117%** |
+| `GET /api/v1/utils/health-check` — no database | 86,226 req/s | **89,387** | +3.7% |
+
+Against the FastAPI template this is a port of, measured in the same run:
+
+| Endpoint | FastAPI | This template | |
+| --- | --- | --- | --- |
+| `users-me` | 2,300 req/s | **13,523** | 5.9× |
+| `items-create` | 1,240 req/s | **3,730** | 3.0× |
+| `items-list` | 1,490 req/s | **2,749** | 1.8× |
+| `health-check` | 28,756 req/s | **89,387** | 3.1× |
+
+The two database-heavy endpoints are the ones worth noticing, because **before this work they were
+slower than FastAPI** — `items-create` by 1.7× and `items-list` by 1.2×. Peak memory also crossed
+over: **1,559 MiB against FastAPI's 2,372**, where this template previously used 2,268 MiB, because
+the context pool default went from around 150 contexts to a handful.
+
+Startup is still the weak spot and gained little: **10.8s to the first `200`, against FastAPI's
+1.4s.** A JVM, a GraalPy context pool and a GraalJS engine all initialise before the first request.
+
+#### What was actually wrong
+
+None of it was the application code, and none of it was the GIL, which was the first guess:
+
+- **A validated request body walked the whole classpath, twice per request.** Resolving a validation
+  group missed the bean-introspection cache, and a miss re-ran discovery — every jar, every entry.
+  That alone was 3.5× on the write path ([pyronaut#242](https://github.com/micronaut-projects/pyronaut/pull/242)).
+- **A service with dependencies could not be per-context.** So every request funnelled into the one
+  GraalPy context its singleton lived in, and adding contexts made it worse rather than better
+  ([micronaut-core#13565](https://github.com/micronaut-projects/micronaut-core/pull/13565)).
+- **The pool default was `processors * 2`**, the worst value of any measured
+  ([#13557](https://github.com/micronaut-projects/micronaut-core/pull/13557),
+  [#13578](https://github.com/micronaut-projects/micronaut-core/pull/13578)).
+- **A list response built an entity per row to read one id.** The paged read now projects
+  `ItemPublic` in the repository, so nothing per row crosses into Python.
+
+#### How it was measured
+
+Apple M2 Max, 12 cores, 64 GiB, macOS 26.5 (Darwin 25.5.0), arm64. One 12-core laptop, so treat the
+ratios as meaningful and the absolute numbers as local.
+
+32 concurrent clients via [k6](https://k6.io), 5,000 seeded rows, 30s warmup discarded, then the
+median of three 60s runs — the ranges across those three were within 1% on every figure above. The
+two applications run **one at a time**, never concurrently, so they never contend for CPU or for the
+database. FastAPI runs with 4 uvicorn workers, its own Dockerfile's default.
+
+**Both applications run against PostgreSQL**, which is the point of the comparison being fair: this
+template ships MySQL, and the benchmark applies a Postgres overlay to a copy of it so that the two
+are measured on the same database rather than MySQL being compared with Postgres. The harness, the
+overlay and the fairness ledger are in `micronaut-projects/pyronaut-fastapi-benchmark`.
+
+Login is excluded deliberately: FastAPI hashes with Argon2 and this template with BCrypt, so that
+number measures a KDF choice rather than either framework.
+
 ### Honest limitations
 
 - **Native image is deferred.** GraalJS is not supported inside a native image and server-side
