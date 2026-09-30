@@ -958,6 +958,27 @@ Known and likely targets:
 | `micronaut-projects/micronaut-email` | Mailpit is started by hand with a Testcontainers `GenericContainer`; a Test Resources provider would make this one line | Feature request | Low |
 | `micronaut-projects/micronaut-data` | Anything found around UUID primary keys on MySQL (§7.1) | Issue | Low |
 | `micronaut-projects/micronaut-guides` | A guide derived from this template, once it works | Contribution | Low |
+| `micronaut-projects/micronaut-core` | A pooled Python type could not take constructor arguments, so a service could not be per-context — and could not carry advice either, which made `@Transactional` on a pooled service silently do nothing. Also: a prototype proxy target resolved per call corrupted its resolution context, and resolving a pooled value by borrowing a context **deadlocked the pool** under load (15 threads each holding one and waiting for a second) | Draft PR [micronaut-core#13565](https://github.com/micronaut-projects/micronaut-core/pull/13565) — measured here: pooling the services is worth 1.97× on `users-me`, 1.17× on a paged read | **High — the remaining data-path cost** |
+| `micronaut-projects/micronaut-core` | `micronaut.python.pool.size` defaulted to `processors * 2`, which was the worst setting measured | **Fixed.** [micronaut-core#13557](https://github.com/micronaut-projects/micronaut-core/pull/13557) merged: `min(8, max(2, processors / 4))` | High |
+
+### 12.1 Adopting these in the template
+
+**Follow-up, gated on a release.** The template runs released Pyronaut, so anything here that
+needs the pooled-type work cannot be adopted until a Pyronaut release carries Core 5.2.10 or
+later. Two changes are waiting on that:
+
+- **Pool the services.** `UserService` and `ItemService` become `@ContextPooled` while keeping
+  `@Transactional`. Worth 1.97× on `users-me` and 1.17× on a paged read; needs
+  [#13565](https://github.com/micronaut-projects/micronaut-core/pull/13565), without which
+  the advice is dropped silently or the pool deadlocks.
+- **Revisit `config/application.toml`'s explicit `pool.size`.** It is set by hand because the
+  old default was `processors * 2`. Once a release carries
+  [#13557](https://github.com/micronaut-projects/micronaut-core/pull/13557) the computed default
+  is `min(8, max(2, processors / 4))`, and the explicit setting can probably go.
+
+When that release lands: re-run `pyronaut test` here, re-measure with the benchmark in the
+adjacent `pyronaut-fastapi-benchmark` project, and push to `origin/main` — the template takes
+commits on `main` directly rather than through a PR.
 
 Each phase in §13 should end with any issues it uncovered actually filed, rather than batched to the
 end of the project.
