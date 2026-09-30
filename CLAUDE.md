@@ -28,7 +28,9 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
   two packages that import from each other deadlock at startup even when the
   individual modules would be fine. Keep cross-package dependencies
   one-directional: `security` and `controllers` may import `services`, never the
-  reverse. `app/passwords.py` sits at the top level for exactly this reason.
+  reverse. A bean in `src-java/` sidesteps this entirely, which is one reason
+  `PasswordHasher` is Java: `services` and `security` can both import it with no
+  cycle to reason about.
 - **`StartupEvent` and `ApplicationEventListener` live in
   `micronaut.context.event`**, not `micronaut.runtime.event`. When an import
   fails at runtime, grep `__pyronaut__/ide-stubs/` for the class name rather
@@ -175,6 +177,28 @@ mounted outside the router context. Keep it green, and add a case to
   `rootProps` — the reset token included (micronaut-views#1199). Keep secrets
   out of an email's model until that is fixed; `tests/test_email.py` has a
   strict xfail that will start failing the moment it is.
+- **Java for a bean that is all Java calls, Python for everything else.**
+  `src-java/fullstack/security/` holds the two: `PasswordHasher`, every line of
+  which calls Spring Security Crypto, and `CurrentUser`, which parses a JWT
+  subject and asks a repository. Two reasons, and neither is "Java is faster" in
+  general. A Python bean crossing into Java for its whole body pays an
+  interpreter hop per call and adds nothing. And a Java bean has no context
+  affinity, so a pooled type — every route module is one — can hold it, where
+  holding a Python singleton drags that module's work back into the one context
+  the singleton lives in.
+
+  Python imports a Java bean the same way it imports any Java type
+  (`from fullstack.security import PasswordHasher`), and Java injects a Python
+  bean by its generated class (`app.services.UserService`, method `by_id`,
+  returning `app.User`). Both directions are compiled, not reflective. Keep
+  hand-written Java out of package `app`: that is where the generated stubs live,
+  mirroring the Python package of the same name, so an import of a Java class
+  there would be competing with a Python package — `fullstack` leaves no room for
+  the question.
+
+  Keep the Java side small. If a bean holds application logic, it belongs in
+  Python even when it touches a Java library — `MailService` and the repositories
+  are the line.
 - **JVM runtime, not native.** GraalJS does not work in a native image yet
   (PLAN.md §4.4). Keep every other choice native-friendly: no JNI dependencies,
   so that when GraalJS lands the change is a build flag.

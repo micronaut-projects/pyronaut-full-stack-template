@@ -19,11 +19,11 @@ from micronaut.http.annotation import Body, Controller, Delete, Get, Post, Put, 
 from micronaut.security.annotation import Secured
 from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
+from fullstack.security import CurrentUser
 
 from ..dto import ItemCreate, ItemUpdate, ItemsPublic, Message
 from ..mappers import Projections
 from ..paging import DEFAULT_PAGE_SIZE, page_request
-from ..security.current import CurrentUser
 from ..services.items import ItemService
 
 Controller("/api/v1/items")

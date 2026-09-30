@@ -10,11 +10,11 @@ from uuid import UUID
 from jakarta.inject import Singleton
 from jakarta.transaction import Transactional
 from micronaut.data.model import Page, Pageable
+from fullstack.security import PasswordHasher
 
 from ..dto import UserCreate, UserRegister, UserUpdate, UserUpdateMe
 from ..entities import User
 from ..repositories import UserRepository
-from ..passwords import PasswordHasher
 
 
 class EmailAlreadyUsed(Exception):
@@ -54,7 +54,7 @@ class UserService:
             return None
         if not self.passwords.verify(password, user.hashedPassword):
             return None
-        if self.passwords.needs_rehash(user.hashedPassword):
+        if self.passwords.needsRehash(user.hashedPassword):
             user.hashedPassword = self.passwords.hash(password)
             self.users.update(user)
         return user

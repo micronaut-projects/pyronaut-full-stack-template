@@ -36,6 +36,7 @@ Should not trigger:
 2. Write annotations with literal arguments only.
 3. Keep cross-package imports one-directional.
 4. Compile, then run — the two fail differently.
+5. Reach for Java only where it removes a hop.
 
 ### 1) Check the generated stubs before guessing an import
 
@@ -88,6 +89,45 @@ Do not write your own `__init__.py` — Micronaut generates them for the GraalPy
 
 Getting `process` to pass is not evidence that anything works. Run `pyronaut dev` or `pyronaut test` before believing it.
 
+### 5) Reach for Java only where it removes a hop
+
+A Pyronaut project has a Java source root as well (`java` under `[tool.pyronaut.sources]`, `src-java`
+by default), compiled into the same container. Both directions work and neither is reflective.
+
+```python
+from myapp.security import PasswordHasher     # a Java class, imported by its Java package
+
+@Singleton
+class UserService:
+    def __init__(self, passwords: PasswordHasher):
+```
+
+```java
+// Java injecting a Python bean, through the class Pyronaut generates for it
+public CurrentUser(UserService users) { this.users = users; }
+
+public @Nullable User of(Authentication authentication) {
+    return users.by_id(UUID.fromString(authentication.getName()));
+}
+```
+
+Two reasons to move a bean to Java, and "Java is faster" is not one of them at this granularity:
+
+- **Its body is already Java.** A Python bean whose every line calls into a Java library pays an
+  interpreter crossing per call and adds nothing of its own. A password encoder is the archetype.
+- **A Java bean has no context affinity.** A pooled Python type — every route module is one — can
+  hold a Java bean freely. Holding a Python *singleton* instead puts that type's work back through
+  the one context the singleton lives in, which is the cost pooling exists to avoid, and a recent
+  Core warns about it during processing.
+
+Keep the Java side small: a bean holding application logic belongs in Python even when it touches
+Java libraries.
+
+Give the Java code a package of its own, not the one the generated stubs use — that package mirrors
+the Python root package, so `from app import Thing` has a Python package of that name to resolve
+against, and an import meant for the Java class would be reading a name from the Python package
+instead. A separate package leaves no room for the question.
+
 ## Known traps
 
 | Symptom | Cause |
@@ -101,6 +141,7 @@ Getting `process` to pass is not evidence that anything works. Run `pyronaut dev
 | A Java member is unreachable from Python | Its name is a Python keyword, so it takes a trailing underscore: `Pageable.from(...)` is written `Pageable.from_(...)` |
 | `Cannot import [Mapping] ... is not on the compile classpath` | A nested Java annotation has no top-level type. Reach it through its enclosing type: `@Mapper.Mapping(...)` |
 | Cannot use a Python exception as an `ExceptionHandler` type parameter | That bound is Java's `Throwable`. Catch it in the controller instead |
+| A Java class in `src-java` is not found by a Python import | Its package is the one the generated stubs use, which mirrors a Python package of the same name (§5). Give the Java code its own package |
 
 ## Verification
 

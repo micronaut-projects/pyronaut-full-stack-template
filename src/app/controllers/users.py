@@ -20,6 +20,7 @@ from micronaut.http.annotation import Body, Controller, Delete, Get, Patch, Post
 from micronaut.security.annotation import Secured
 from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
+from fullstack.security import CurrentUser
 
 from ..dto import (
     ApiError,
@@ -34,7 +35,6 @@ from ..dto import (
 )
 from ..mappers import Projections
 from ..paging import DEFAULT_PAGE_SIZE, page_request
-from ..security.current import CurrentUser
 from ..security.provider import ROLE_SUPERUSER
 from ..services.mail import MailService
 from ..services.users import EmailAlreadyUsed, UserService

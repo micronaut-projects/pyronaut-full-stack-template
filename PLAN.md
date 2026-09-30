@@ -329,7 +329,6 @@ pyronaut-full-stack-template/
 │       │   └── mail.py         MailService  (Micronaut Email + React templates)
 │       ├── security/
 │       │   ├── provider.py     HttpRequestAuthenticationProvider
-│       │   ├── passwords.py    PasswordEncoder bean (Spring Security Crypto)
 │       │   ├── tokens.py       password-reset token issue/verify
 │       │   └── claims.py       roles + user id claims
 │       ├── controllers/
@@ -342,7 +341,10 @@ pyronaut-full-stack-template/
 │       ├── config.py           @ConfigurationProperties (app.*)
 │       ├── dotenv.py           .env PropertySourceLoader (§7.6)
 │       └── bootstrap.py        StartupEvent listener → first superuser
-├── src-java/                   Java escape hatch (expected: empty or near-empty)
+├── src-java/                   Java sources, same DI container
+│   └── fullstack/security/
+│       ├── PasswordHasher.java  Spring Security Crypto; Java because every line was
+│       └── CurrentUser.java     JWT subject → User, injecting the Python UserService
 ├── config/
 │   ├── application.toml
 │   ├── application-dev.toml
@@ -504,9 +506,16 @@ Why this is the right call, and better than the alternatives considered in revis
   `verify_and_update`) with an `{bcrypt}`-prefixed hash format and a documented upgrade path — so
   we match upstream's semantics, not just its strength.
 
-Implementation: a Python `@Singleton` wrapping `PasswordEncoder`, injected into `UserService` and
-the authentication provider. Argon2 remains available later via `Argon2PasswordEncoder` if
-BouncyCastle is added; not in scope now.
+Implementation: a `@Singleton` wrapping `PasswordEncoder`, injected into `UserService` and the
+authentication provider. Argon2 remains available later via `Argon2PasswordEncoder` if BouncyCastle
+is added; not in scope now.
+
+Planned as Python, built as **Java** — `src-java/fullstack/security/PasswordHasher.java`. Every line
+of the bean was a call into Spring Security Crypto, so the Python body added an interpreter crossing
+per call and nothing else; and a Java bean has no interpreter-context affinity, so a pooled Python
+type can hold it without pulling its work into one context. `CurrentUser` moved for the second
+reason alone, and injects the Python `UserService` from Java, which is the interop in the other
+direction.
 
 ### 7.4 Security
 

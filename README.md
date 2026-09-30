@@ -104,6 +104,40 @@ GraalPy and GraalJS run in the same JVM. The React pages and the transactional e
 through the same engine, from the same bundle — so the email templates need no separate React
 Email workspace and no build step producing Jinja. Node is a bundler, absent from production.
 
+### Two languages, one container, no binding layer
+
+Two of this application's beans are Java, in `src-java/`, and nothing about the Python that uses
+them is special:
+
+```python
+from fullstack.security import PasswordHasher   # a Java class
+
+@Singleton
+class UserService:
+    def __init__(self, users: UserRepository, passwords: PasswordHasher):
+```
+
+It goes the other way too. `CurrentUser` is Java and injects `UserService`, a Python class, taking
+the Python entity back as a return value:
+
+```java
+public CurrentUser(UserService users) { this.users = users; }
+
+public @Nullable User of(Authentication authentication) {
+    return users.by_id(UUID.fromString(authentication.getName()));
+}
+```
+
+Pyronaut generates a Java class for each Python type, so this is ordinary compilation: rename the
+Python method and the Java stops compiling. One container, one configuration, one `pyronaut test`.
+
+The two were moved to Java because every line of them was already calling a Java library or crossing
+into one, and because a Java bean has no context affinity. A pooled Python type — every route module
+is one — can hold a Java bean freely, where holding a Python singleton puts that type's work back
+through the single interpreter context the singleton lives in. So this is the ordinary reason to
+reach for Java here, and it is a narrow one: the rest of the application is Python because Python is
+where the application logic reads best.
+
 ### Honest limitations
 
 - **Native image is deferred.** GraalJS is not supported inside a native image and server-side
@@ -240,7 +274,7 @@ hydrated.
 ```
 .agents/skills/ Agent skills: pyronaut, server-rendered-react, testing
 src/            Python application sources
-src-java/       Java sources, compiled into the same DI container (currently empty)
+src-java/       Java sources, compiled into the same DI container
 config/         application.toml and the Flyway migrations
 frontend/       React pages, email templates and the SSR/hydration entry points
 static/         CSS and the generated hydration bundle

@@ -27,10 +27,10 @@ from micronaut.security.annotation import Secured
 from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
 from micronaut.views import View
+from fullstack.security import CurrentUser
 
 from ..mappers import Projections
 from ..paging import page_request
-from ..security.current import CurrentUser
 from ..services.items import ItemService
 from ..services.users import UserService
 
