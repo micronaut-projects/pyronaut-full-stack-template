@@ -12,6 +12,9 @@ These mirror the request/response models in the upstream template's
 
 from dataclasses import dataclass, field
 from typing import Annotated
+from uuid import UUID
+
+from java.time import Instant
 
 from jakarta.validation.constraints import Email, NotBlank, Size
 from micronaut.serde.annotation import Serdeable
@@ -114,11 +117,15 @@ class ItemUpdate:
 @Serdeable
 @dataclass
 class ItemPublic:
-    id: str
+    # Typed rather than stringly: a DTO projection populates these straight from the row, and
+    # serde renders a UUID and an Instant in the shapes the API already published -- a uuid
+    # string and ISO-8601 with a zone. Declared as `str` they took whatever the JDBC driver's
+    # toString gave, which for a timestamp was local time with no zone at all.
+    id: UUID
     title: str
-    ownerId: str
+    ownerId: UUID
     description: str | None = None
-    createdAt: str | None = None
+    createdAt: Instant | None = None
 
 
 @Serdeable

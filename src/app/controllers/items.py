@@ -62,8 +62,8 @@ def list_items(
     A superuser sees every item; everyone else sees only their own.
     Paginated with `page` and `size`.
     """
-    result = items.list_for(current.of(authentication), page_request(page, size))
-    return projections.items_public(result.getContent(), result.getTotalSize())
+    result = items.list_public_for(current.of(authentication), page_request(page, size))
+    return ItemsPublic(data=list(result.getContent()), count=int(result.getTotalSize()))
 
 
 @Get("/{itemId}")

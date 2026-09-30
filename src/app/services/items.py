@@ -10,7 +10,7 @@ from jakarta.inject import Singleton
 from jakarta.transaction import Transactional
 from micronaut.data.model import Page, Pageable
 
-from ..dto import ItemCreate, ItemUpdate
+from ..dto import ItemCreate, ItemPublic, ItemUpdate
 from ..entities import Item, User
 from ..repositories import ItemRepository
 
@@ -28,6 +28,17 @@ class ItemService:
         if user.isSuperuser:
             return self.items.findAll(pageable)
         return self.items.findByOwnerId(user.id, pageable)
+
+    def list_public_for(self, user: User, pageable: Pageable) -> Page[ItemPublic]:
+        """The same page as ``list_for``, projected in Java rather than mapped in Python.
+
+        A list response needs nothing from an ``Item`` that the row does not already carry,
+        so there is no reason to build one per row -- nor an owner ``User`` per row, which
+        the entity path needs only to read an id that is already the ``owner_id`` column.
+        """
+        if user.isSuperuser:
+            return self.items.findAllProjected(pageable)
+        return self.items.findByOwnerIdProjected(user.id, pageable)
 
     @staticmethod
     def is_owned_by(item: Item, user: User) -> bool:

@@ -199,6 +199,23 @@ mounted outside the router context. Keep it green, and add a case to
   Keep the Java side small. If a bean holds application logic, it belongs in
   Python even when it touches a Java library — `MailService` and the repositories
   are the line.
+- **A list endpoint projects in the repository; a single-object one maps.**
+  `ItemRepository.findAllProjected` and `findByOwnerIdProjected` return
+  `Page[ItemPublic]` directly, so Micronaut Data builds the DTO from the row in
+  Java and nothing per row crosses into Python. The entity path costs far more
+  than it looks: it materialises an `Item` *and* an owner `User` per row, the
+  latter only so the bean mapper can read `#{item.owner.id}` — a value that is
+  already the `owner_id` column. Measured on a page of 20 at 32 concurrent
+  clients: 2,199 req/s mapped, 3,157 projected.
+
+  Two things to know before adding one. The fetch join is not optional on the
+  entity path — remove it and `item.owner` is null, so the mapper throws on every
+  request, which is a 100% failure rate rather than a subtle regression. And a
+  projected DTO must carry **real types**: `ItemPublic.id` is `uuid.UUID` and
+  `createdAt` is `Instant`, because as `str` they took whatever the JDBC driver's
+  `toString` produced, which for a timestamp was local time with no zone
+  (`2026-01-01 01:23:20` instead of `2026-01-01T00:23:20Z`). Serde renders the
+  typed versions in the shapes the API already published, and both paths now agree.
 - **JVM runtime, not native.** GraalJS does not work in a native image yet
   (PLAN.md §4.4). Keep every other choice native-friendly: no JNI dependencies,
   so that when GraalJS lands the change is a build flag.
