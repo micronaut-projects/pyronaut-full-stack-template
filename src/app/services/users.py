@@ -7,7 +7,7 @@ or by the startup bootstrap.
 """
 
 from uuid import UUID
-from jakarta.inject import Singleton
+from micronaut.context.python.scope import ContextPooled
 from jakarta.transaction import Transactional
 from micronaut.data.model import Page, Pageable
 from fullstack.security import PasswordHasher
@@ -21,7 +21,7 @@ class EmailAlreadyUsed(Exception):
     """Raised when an email address is already registered."""
 
 
-@Singleton
+@ContextPooled
 class UserService:
     def __init__(self, users: UserRepository, passwords: PasswordHasher):
         self.users = users

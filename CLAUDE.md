@@ -7,7 +7,7 @@ architectural decisions; most of them have already been made and justified there
 ## State
 
 The application runs and the suite is green: **38 tests, 0 failures, 0 skipped**
-(31 API, 7 browser) on Pyronaut 0.0.6 (Core 5.2.9) and Micronaut Views 6.3.1. `pyronaut install`,
+(31 API, 7 browser) on Pyronaut 0.0.7 (Core 5.2.10) and Micronaut Views 6.3.1. `pyronaut install`,
 `process`, `dev` and `test` all pass against a real MySQL from Test Resources:
 Flyway applies the schema, the first superuser is seeded, login issues a JWT cookie,
 the React 19 pages server-render on GraalJS, emails render from the same bundle and
@@ -129,7 +129,7 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
 | --- | --- |
 | GraalVM `25.4.4+1-graal` | Pyronaut's toolchain minimum is 25, but the Crema native build and GraalPy both want this exact build. Set `JAVA_HOME` to it — a stale Gradle daemon on another JDK fails the native build with `Could not find required field OptimizedDirectCallNode.callCount` |
 | GraalPy `graalpy3.13-25.4.4` | Pinned in pyronaut's own `gradle.properties`. The version must match the GraalVM the project builds against and the one Pyronaut was built with — a mismatch shows up as `Unknown operation code 0` or an NPE creating the GraalPy context, not as a version error |
-| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.6`). Clearing `~/.pyronaut/setup/<version>` means re-running `pyronaut setup`; a dependency change does too |
+| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.7`). Clearing `~/.pyronaut/setup/<version>` means re-running `pyronaut setup`; a dependency change does too |
 | Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers. On Podman, Ryuk cannot bind-mount the machine's API socket (`operation not supported`), which fails only the Mailpit test — run with `TESTCONTAINERS_RYUK_DISABLED=true`. The `ryuk.disabled` property in `~/.testcontainers.properties` is **not** honoured by Testcontainers 2.x; only the environment variable works |
 | Node.js 22 + npm | Bundling only — not needed at runtime |
 
@@ -276,15 +276,23 @@ workarounds. PLAN.md §12 has the tracked list, and the README has a table of wh
 each fix shipped in.
 
 The template carries **no** workaround for an upstream bug and no polyfill of its own,
-and as of Pyronaut 0.0.6 there is nothing left open on the tracked list. The last four
-landed together: Views 6.3.1 took the URL polyfills
-([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)), Pyronaut
-0.0.6 took POM-only coordinates in the test-resources-server scope
+and as of Pyronaut 0.0.7 there is nothing left open on the tracked list. Views 6.3.1 took
+the URL polyfills ([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)),
+Pyronaut 0.0.6 took POM-only coordinates in the test-resources-server scope
 ([#215](https://github.com/micronaut-projects/pyronaut/pull/215)) and the nested
 annotation stubs ([#226](https://github.com/micronaut-projects/pyronaut/pull/226)), and
 Core 5.2.9 took both the unreadable-annotation report
 ([#13366](https://github.com/micronaut-projects/micronaut-core/pull/13366)) and module
 route pooling ([#13488](https://github.com/micronaut-projects/micronaut-core/pull/13488)).
+
+The performance work landed in 0.0.7: a validated request body no longer walks the
+classpath twice per request ([pyronaut#242](https://github.com/micronaut-projects/pyronaut/pull/242)),
+a pooled type may take constructor arguments and carry advice
+([micronaut-core#13565](https://github.com/micronaut-projects/micronaut-core/pull/13565)),
+and the pool default is `processors / 2` rather than a number this template had to set by
+hand ([#13557](https://github.com/micronaut-projects/micronaut-core/pull/13557),
+[#13578](https://github.com/micronaut-projects/micronaut-core/pull/13578)). All three were
+found by benchmarking this application; see `micronaut-projects/pyronaut-fastapi-benchmark`.
 
 `setup-pyronaut` still has no `v1` tag and its `main` is an empty commit, which is a
 maintainer action rather than something that can be sent as a PR. It blocks CI here.

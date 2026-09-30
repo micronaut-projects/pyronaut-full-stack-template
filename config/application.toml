@@ -144,31 +144,22 @@ virtual = false
 # ---------------------------------------------------------------------------
 # GraalPy context pool.
 #
-# The default is `processors * 2`, which on a 12-core machine means 24 and
-# produces around 150 contexts under load. Measured against this application:
-# fewer contexts are substantially faster on any route that goes through a
-# Python bean, because a `@Singleton` service lives in one context while
-# requests are served on any of them, and a service with injected dependencies
-# cannot be pooled (a pooled type must be stateless with a no-argument
-# constructor). More contexts therefore mean a smaller share of requests landing
-# on the context that owns the bean.
+# `micronaut.python.pool.size` is deliberately NOT set. It used to be, because
+# the default was `processors * 2` -- around 150 contexts under load on a
+# 12-core machine -- and because a service with injected dependencies could not
+# be pooled, so every request funnelled into the one context its singleton lived
+# in and more contexts only made that worse.
 #
-# At 32 concurrent clients, `GET /api/v1/items?page=0&size=20`:
+# Both are fixed as of Pyronaut 0.0.7 (Core 5.2.10): the default is now
+# `processors / 2`, floored at 2 and capped at 8 (micronaut-core#13557 and
+# #13578), and the services here are `@ContextPooled`, which is what makes extra
+# contexts add concurrency instead of dividing the traffic reaching one of them
+# (micronaut-core#13565).
 #
-#   size = 24 (the default here)   847 req/s
-#   size = 8                       915 req/s
-#   size = 4                     1,238 req/s
-#   size = 3                     1,240 req/s
-#   size = 1                       586 req/s
-#
-# and `GET /api/v1/users/me` gains 37% between the default and 3.
-#
-# It is not JIT warmup: compiler CPU falls to well under 1% after the first
-# minute while throughput stays flat. See micronaut-core#13553.
-#
-# Four is a floor, not a universal answer -- the useful number depends on how
-# much Python work a request does and on the machine. Re-measure before trusting
-# it for a different workload; `micronaut-projects/pyronaut-fastapi-benchmark`
-# has the harness.
-[micronaut.python.pool]
-size = 4
+# Set it only after measuring. The best size depends on how much Python work a
+# request does: on the machine these were taken on, a keyed read was still
+# gaining at 12 contexts while a paged read of 20 rows peaked at 6 and had lost a
+# third by 12. `micronaut-projects/pyronaut-fastapi-benchmark` has the harness.
+# `micronaut.python.pool.warn-wait` logs when a request waits for a context,
+# which is the signal that the pool is too small; nothing warns when it is too
+# large, so that only shows up as throughput falling when you add contexts.

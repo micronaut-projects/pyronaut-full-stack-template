@@ -5,7 +5,7 @@ to [Pyronaut](https://github.com/micronaut-projects/pyronaut): the same applicat
 same language, with fewer moving parts.
 
 > **Status: working, incomplete.** The application runs, and `pyronaut test` is green: 38 tests
-> across the API and a real browser, on Pyronaut 0.0.6 and Micronaut Views 6.3.1. The frontend is a
+> across the API and a real browser, on Pyronaut 0.0.7 and Micronaut Views 6.3.1. The frontend is a
 > deliberately plain React 19 stack — see
 > [Current state](#current-state) for what is still missing. The full design and its open questions
 > are in [PLAN.md](./PLAN.md).
@@ -202,6 +202,9 @@ them are now fixed and released, and the template carries no workaround for any 
 | Nested Java annotations and enums were offered by the IDE stubs at module level under a name that could not be imported, and two of them could collapse onto one name ([pyronaut#222](https://github.com/micronaut-projects/pyronaut/issues/222)) | Pyronaut 0.0.6 ([#226](https://github.com/micronaut-projects/pyronaut/pull/226)) |
 | The Test Resources server scope rejected the four-part POM-only coordinate, so the GraalJS dependency had to be spelled out as three concrete jars ([pyronaut#166](https://github.com/micronaut-projects/pyronaut/issues/166)) | Pyronaut 0.0.6 ([#215](https://github.com/micronaut-projects/pyronaut/pull/215)) |
 | A route module lost pooling to any module-level decorator that was not a scope, so every mounted controller module was singleton-scoped | Core 5.2.9 ([#13488](https://github.com/micronaut-projects/micronaut-core/pull/13488)) |
+| Validating a request body walked the whole classpath, twice per request, because resolving a validation group missed the introspection cache and a miss re-ran discovery. The write path served 769 req/s; with it cached, 2,721 | Pyronaut 0.0.7 ([#242](https://github.com/micronaut-projects/pyronaut/pull/242)) |
+| A pooled type could not take constructor arguments, so a service with a dependency could not be per-context — and could not carry advice either, which would have made `@Transactional` on a pooled service silently do nothing. Pooling the services is worth 1.97× on a keyed read | Core 5.2.10 ([#13565](https://github.com/micronaut-projects/micronaut-core/pull/13565)) |
+| `micronaut.python.pool.size` defaulted to `processors * 2`, the worst value measured, and this template had to set it by hand | Core 5.2.9 ([#13557](https://github.com/micronaut-projects/micronaut-core/pull/13557)) and 5.2.10 ([#13578](https://github.com/micronaut-projects/micronaut-core/pull/13578)) — now `processors / 2`, floored at 2 and capped at 8 |
 
 Nothing on that list is still open, and the template carries no workaround for any of it. The one
 outstanding external blocker is not a code fix: `setup-pyronaut` has no `v1` tag and its `main` is an
@@ -210,7 +213,7 @@ empty commit, which is what stops CI here.
 ## Requirements
 
 - A JVM Pyronaut SDK and the `pyronaut` CLI
-- GraalVM `25.4.4` and GraalPy `graalpy3.13-25.4.4` — the versions Pyronaut 0.0.6 is built against.
+- GraalVM `25.4.4` and GraalPy `graalpy3.13-25.4.4` — the versions Pyronaut 0.0.7 is built against.
   A mismatch surfaces as `Unknown operation code 0` or a Truffle initialisation failure, not as a
   version error
 - Node.js 22 and npm

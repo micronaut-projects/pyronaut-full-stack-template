@@ -6,7 +6,7 @@ query is generated rather than written out per endpoint.
 """
 
 from uuid import UUID
-from jakarta.inject import Singleton
+from micronaut.context.python.scope import ContextPooled
 from jakarta.transaction import Transactional
 from micronaut.data.model import Page, Pageable
 
@@ -15,7 +15,7 @@ from ..entities import Item, User
 from ..repositories import ItemRepository
 
 
-@Singleton
+@ContextPooled
 class ItemService:
     def __init__(self, items: ItemRepository):
         self.items = items

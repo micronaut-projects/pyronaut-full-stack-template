@@ -963,22 +963,28 @@ Known and likely targets:
 
 ### 12.1 Adopting these in the template
 
-**Follow-up, gated on a release.** The template runs released Pyronaut, so anything here that
-needs the pooled-type work cannot be adopted until a Pyronaut release carries Core 5.2.10 or
-later. Two changes are waiting on that:
+**Adopted in Pyronaut 0.0.7 (Core 5.2.10).** Both changes that were waiting on a release are in:
 
-- **Pool the services.** `UserService` and `ItemService` become `@ContextPooled` while keeping
-  `@Transactional`. Worth 1.97× on `users-me` and 1.17× on a paged read; needs
-  [#13565](https://github.com/micronaut-projects/micronaut-core/pull/13565), without which
-  the advice is dropped silently or the pool deadlocks.
-- **Revisit `config/application.toml`'s explicit `pool.size`.** It is set by hand because the
-  old default was `processors * 2`. Once a release carries
-  [#13557](https://github.com/micronaut-projects/micronaut-core/pull/13557) the computed default
-  is `min(8, max(2, processors / 4))`, and the explicit setting can probably go.
+- **The services are pooled.** `UserService`, `ItemService` and `Projections` are
+  `@ContextPooled` and keep their advice, which needs
+  [#13565](https://github.com/micronaut-projects/micronaut-core/pull/13565) — without it the
+  advice is dropped silently or the pool deadlocks under load.
+- **`config/application.toml` no longer sets `pool.size`.** The computed default is
+  `min(8, max(2, processors / 2))` ([#13557](https://github.com/micronaut-projects/micronaut-core/pull/13557),
+  [#13578](https://github.com/micronaut-projects/micronaut-core/pull/13578)), so the hand-set
+  value is gone. The comment that replaced it says what to measure before setting one again.
 
-When that release lands: re-run `pyronaut test` here, re-measure with the benchmark in the
-adjacent `pyronaut-fastapi-benchmark` project, and push to `origin/main` — the template takes
-commits on `main` directly rather than through a PR.
+Verified functionally on 0.0.7: `pyronaut install`, `process` and `test` pass, 38 tests, 0
+failures, 0 skipped. The compile-time warning about pooled types holding singleton Python beans
+went from 18 pairings to 8; the remaining ones are `MailService` and `PasswordResetTokens`, left
+as singletons deliberately — they are off the hot paths, and both hold `AppConfig`, so pooling
+them would move the warning rather than remove it.
+
+**Not yet re-measured on the released build.** The throughput figures quoted in the config
+comment and in the README table were taken during development against a snapshot of the same
+fixes. Re-running the benchmark needs a quiet machine: the last attempt found load above 7 from
+screen sharing and an editor, which would understate the result. Re-run
+`pyronaut-fastapi-benchmark` when the machine is idle and update the numbers if they move.
 
 Each phase in §13 should end with any issues it uncovered actually filed, rather than batched to the
 end of the project.
