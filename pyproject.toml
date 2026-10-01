@@ -76,16 +76,11 @@ runtime = [
   'io.micronaut.serde:micronaut-serde-jackson',
   'io.micronaut.validation:micronaut-validation',
   'io.micronaut.security:micronaut-security-jwt',
-  # BCrypt password hashing. No Spring context and no Spring Boot — these are
-  # utility jars, pure Java with no JNI, which keeps a future native image
-  # blocked only on GraalJS. See PLAN.md section 7.3.
-  #
-  # spring-security-crypto's POM declares no dependencies, but
-  # DelegatingPasswordEncoder uses org.springframework.util.StringUtils at
-  # runtime, so spring-core is required in practice and its absence only shows
-  # up as a ClassNotFoundException on the first login.
-  'org.springframework.security:spring-security-crypto:7.1.1',
-  'org.springframework:spring-core:7.0.9',
+  # Argon2id password hashing, via BouncyCastle's own implementation rather than
+  # a framework's encoder. One jar, no transitive dependencies, pure Java with
+  # no JNI, which keeps a future native image blocked only on GraalJS. See
+  # PLAN.md section 7.3 and src-java/fullstack/security/PasswordHasher.java.
+  'org.bouncycastle:bcprov-jdk18on:1.84',
   'io.micronaut.email:micronaut-email-javamail',
   'io.micronaut.email:micronaut-email-template',
   'org.eclipse.angus:angus-mail',

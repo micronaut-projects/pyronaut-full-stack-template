@@ -45,7 +45,7 @@ Success criteria, in priority order:
 | Compile-time DI and validation | Beans, routes, repositories and constraints are resolved during `pyronaut process`, not at import time. Wiring mistakes are build failures. |
 | Declarative data access | Micronaut Data JDBC generates SQL from method names at build time. No ORM session lifecycle, no lazy-loading surprises, no N+1 by accident. |
 | No Pydantic problem | Pyronaut's own docs state Pydantic "does not work reliably in Pyronaut's multithreaded scenarios" (`usingPackagesJavaLibraries.adoc`). Micronaut Validation + Serde replace it with build-time-generated code. |
-| The JVM ecosystem, one import away | MySQL JDBC, Flyway, Jakarta Mail, Playwright, Testcontainers, Spring Security Crypto — all `pip`-free imports. |
+| The JVM ecosystem, one import away | MySQL JDBC, Flyway, Jakarta Mail, Playwright, Testcontainers, BouncyCastle — all `pip`-free imports. |
 | Server-side React without Node in production | Micronaut Views React runs the SSR bundle on GraalJS inside the same JVM — for **pages and emails alike** (§7.5). Node is a build-time dependency only. |
 | Real integration tests, no Compose | Test Resources starts MySQL; Testcontainers starts Mailpit. `pyronaut test` is the whole command. |
 | Fast, honest packaging | `pyronaut build --jvm --docker` writes the Dockerfile and produces one image that serves API, SSR and email. Native image is deferred until GraalJS supports it (§4.4). |
@@ -194,7 +194,7 @@ template", then configure. No Copier, no cookiecutter, no generator. Consequence
 | Pydantic (serialization) | Micronaut Serialization — `@Serdeable` | Verified in petclinic |
 | pydantic-settings / `.env` | Micronaut `@ConfigurationProperties` + `application.toml` + env vars | To build (§7.6) |
 | python-jose / PyJWT + OAuth2PasswordBearer | **Micronaut Security JWT** — `HttpRequestAuthenticationProvider`, `@Secured` | **Verified: `micronaut-security/test-suite-python/`** |
-| pwdlib (argon2/bcrypt) | **Spring Security Crypto** — `BCryptPasswordEncoder` | **Decided (§7.3)** |
+| pwdlib (argon2/bcrypt) | **BouncyCastle** — `Argon2BytesGenerator`, Argon2id | **Decided (§7.3)** |
 | `emails` + SMTP | **Micronaut Email** — `micronaut-email-javamail` + Angus Mail | Verified: module list |
 | React Email templates | **`micronaut-email-template` rendered by `micronaut-views-react`** | Contract verified (§7.5) |
 | Mailpit via Compose | Mailpit via Testcontainers + **`micronaut-email-mailpit-http-client`** for assertions | Verified: `micronaut-email/test-suite/.../OrderServiceTest.java` |
@@ -287,7 +287,7 @@ Consequences to carry through the rest of the plan:
   measured against the same application on FastAPI — not millisecond cold starts. That is still a
   strong result and it is the honest one. Do not put native numbers in the README.
 - **No native build job in CI** (§10), and no reflection-config maintenance burden in the first cut.
-  That removes a real cost: entities, DTOs, the JDBC driver, Angus Mail and Spring Security Crypto
+  That removes a real cost: entities, DTOs, the JDBC driver, Angus Mail and BouncyCastle
   would all have needed attention.
 - **Native is planned work, not a dropped feature.** It has its own phase (§13, phase 11), gated on
   GraalJS support rather than on a date, and it is what the README should say: *native is coming,
@@ -343,7 +343,7 @@ pyronaut-full-stack-template/
 │       └── bootstrap.py        StartupEvent listener → first superuser
 ├── src-java/                   Java sources, same DI container
 │   └── fullstack/security/
-│       ├── PasswordHasher.java  Spring Security Crypto; Java because every line was
+│       ├── PasswordHasher.java  BouncyCastle Argon2id; Java because every line was
 │       └── CurrentUser.java     JWT subject → User, injecting the Python UserService
 ├── config/
 │   ├── application.toml
@@ -420,7 +420,7 @@ runtime = [
   "io.micronaut.serde:micronaut-serde-jackson",
   "io.micronaut.validation:micronaut-validation",
   "io.micronaut.security:micronaut-security-jwt",
-  "org.springframework.security:spring-security-crypto:7.1.1",
+  "org.bouncycastle:bcprov-jdk18on:1.84",
   "io.micronaut.email:micronaut-email-javamail",
   "io.micronaut.email:micronaut-email-template",
   "org.eclipse.angus:angus-mail",
@@ -478,44 +478,49 @@ constraints at the controller boundary via `@Valid`, so — unlike the petclinic
 `ConstraintViolationException` to a single error shape with an exception handler. That gives us one
 place to control the API error contract, which the generated TS client depends on.
 
-### 7.3 Password hashing — **decided: Spring Security Crypto**
+### 7.3 Password hashing — **decided: BouncyCastle Argon2id**
 
-Per review, we use `org.springframework.security:spring-security-crypto`, following the official
-Micronaut guide *Building a REST API — Spring Boot vs Micronaut: Security Basic Auth*
-(`micronaut-guides/guides/building-a-rest-api-spring-boot-vs-micronaut-security-basic-auth`), which
-uses exactly this pairing:
+`org.bouncycastle:bcprov-jdk18on`, used through `Argon2BytesGenerator` directly rather than through
+any framework's `PasswordEncoder`:
 
 ```java
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-...
-passwordEncoder = new BCryptPasswordEncoder();
-... passwordEncoder.matches(form.getSecret(), storedHash)
+Argon2Parameters parameters = new Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+    .withVersion(Argon2Parameters.ARGON2_VERSION_13)
+    .withSalt(salt).withMemoryAsKB(19456).withIterations(2).withParallelism(1)
+    .build();
 ```
 
-Why this is the right call, and better than the alternatives considered in revision 1:
+Why:
 
-- It is a **standalone artifact** — no Spring context, no Spring Boot, no auto-configuration. It is
-  a crypto library that happens to live in the Spring group id.
-- **Pure Java, no JNI.** That matters here: a JNI-backed Argon2 binding would undermine the
-  `pyronaut build --native` story that is one of this template's headline features.
-- It is a **Micronaut Launch feature** (`spring-security-crypto`), so `pyronaut create --features
-  security,spring-security-crypto,...` produces the same dependency set. The template stays
-  consistent with what the tooling generates.
-- `DelegatingPasswordEncoder` gives us upstream's **rehash-on-login** behaviour (`pwdlib`'s
-  `verify_and_update`) with an `{bcrypt}`-prefixed hash format and a documented upgrade path — so
-  we match upstream's semantics, not just its strength.
+- **Argon2id is the current first choice**, bcrypt the fallback for platforms without it. It won the
+  Password Hashing Competition, and its cost is *memory* — 19 MiB per hash at OWASP's baseline
+  parameters — which is what denies an attacker the GPU advantage that bcrypt's CPU-bound cost
+  leaves on the table.
+- **One jar with no transitive dependencies.** This replaced
+  `org.springframework.security:spring-security-crypto` plus `org.springframework:spring-core`,
+  which was two artifacts and a second framework's utility layer on the class path to reach one
+  algorithm. It also removed `commons-logging`, pulled in by spring-core, which clashed with the
+  `jcl-over-slf4j` already there — and which turned out to be what stopped `pyronaut run --native`
+  from starting this application at all (§4.4).
+- **Pure Java, no JNI**, which a native image needs and which a JNI-backed Argon2 binding would not
+  give.
+- **Hashes carry their own parameters**, in the PHC string format Argon2's own tooling writes:
+  `$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>`. So `verify` recomputes with the parameters the
+  stored hash was written under and keeps working across a configuration change, while
+  `needsRehash` reports that the stored parameters are no longer the configured ones and
+  `UserService.authenticate` rewrites the hash while it still holds the password. That is upstream's
+  `pwdlib` `verify_and_update` behaviour, reached without a delegating encoder.
 
-Implementation: a `@Singleton` wrapping `PasswordEncoder`, injected into `UserService` and the
-authentication provider. Argon2 remains available later via `Argon2PasswordEncoder` if BouncyCastle
-is added; not in scope now.
+What this gave up: the `{bcrypt}`-prefixed hashes written before the change cannot be verified any
+more, since nothing on the class path implements bcrypt. For a template that starts from an empty
+schema this costs nothing; a deployment carrying such hashes would need to keep a bcrypt
+implementation around for one release and rehash on login.
 
 Planned as Python, built as **Java** — `src-java/fullstack/security/PasswordHasher.java`. Every line
-of the bean was a call into Spring Security Crypto, so the Python body added an interpreter crossing
-per call and nothing else; and a Java bean has no interpreter-context affinity, so a pooled Python
-type can hold it without pulling its work into one context. `CurrentUser` moved for the second
-reason alone, and injects the Python `UserService` from Java, which is the interop in the other
-direction.
+of the bean is a call into a Java library, so the Python body added an interpreter crossing per call
+and nothing else; and a Java bean has no interpreter-context affinity, so a pooled Python type can
+hold it without pulling its work into one context. `CurrentUser` moved for the second reason alone,
+and injects the Python `UserService` from Java, which is the interop in the other direction.
 
 ### 7.4 Security
 
@@ -911,7 +916,7 @@ contribution to `micronaut-views` rather than a blocker.
 
 | Was | Now |
 | --- | --- |
-| Password hashing library undecided | **Spring Security Crypto** (§7.3) |
+| Password hashing library undecided | **BouncyCastle Argon2id** (§7.3) |
 | React emails an unproven "opportunity" | **Required feature**, contract verified (§7.5) |
 | `core.version` pinned to a SNAPSHOT | **5.2.3** release; platform 5.1.5 (§6) |
 | Copier vs. clone-and-rename unknown | Upstream dropped Copier; **GitHub template repository** (§2.4) |
@@ -997,7 +1002,7 @@ end of the project.
 | --- | --- | --- |
 | **0. Spikes** | Playwright Java via JUnit extension from a Python module (§11.2); OpenAPI → `openapi-ts` (§11.5); React email render without hydration script (§11.6); confirm the compatible `pyronaut` CLI release (§11.4) | Each answered yes/no with a runnable proof; issues filed for every no |
 | **1. Skeleton** | `pyproject.toml` at 5.2.3/5.1.5, MySQL + Test Resources, Flyway V1, `User`/`Item` entities, repositories, health check, `.env` loader, one pytest | `pyronaut test` green with a real MySQL container |
-| **2. Auth** | Security JWT, `HttpRequestAuthenticationProvider`, Spring Security Crypto encoder, roles, cookie mode, login/me endpoints, first-superuser bootstrap | Login and `@Secured` routes tested |
+| **2. Auth** | Security JWT, `HttpRequestAuthenticationProvider`, BouncyCastle Argon2id hashing, roles, cookie mode, login/me endpoints, first-superuser bootstrap | Login and `@Secured` routes tested |
 | **3. API parity** | All endpoints from §2.1, declarative validation, error contract, pagination | Endpoint-for-endpoint parity, pytest per route |
 | **4. Email** | Micronaut Email + Angus Mail, React email components through `views-react`, Mailpit via Testcontainers, password recovery flow, `MailpitClient` assertions | Recovery flow tested end to end at the API level, asserting rendered HTML |
 | **5. Frontend Stage A** | SSR + hydration for every screen on the petclinic's proven stack; generated TS client; shared SSR bundle with the email roots | Every route server-renders and hydrates |

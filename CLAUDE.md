@@ -185,7 +185,7 @@ mounted outside the router context. Keep it green, and add a case to
   strict xfail that will start failing the moment it is.
 - **Java for a bean that is all Java calls, Python for everything else.**
   `src-java/fullstack/security/` holds the two: `PasswordHasher`, every line of
-  which calls Spring Security Crypto, and `CurrentUser`, which parses a JWT
+  which calls BouncyCastle's Argon2id, and `CurrentUser`, which parses a JWT
   subject and asks a repository. Two reasons, and neither is "Java is faster" in
   general. A Python bean crossing into Java for its whole body pays an
   interpreter hop per call and adds nothing. And a Java bean has no context

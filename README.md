@@ -199,8 +199,13 @@ template ships MySQL, and the benchmark applies a Postgres overlay to a copy of 
 are measured on the same database rather than MySQL being compared with Postgres. The harness, the
 overlay and the fairness ledger are in `micronaut-projects/pyronaut-fastapi-benchmark`.
 
-Login is excluded deliberately: FastAPI hashes with Argon2 and this template with BCrypt, so that
-number measures a KDF choice rather than either framework.
+Login is excluded deliberately. Both sides now hash with Argon2id — this template moved to it when
+it dropped Spring Security Crypto — but not at the same cost: `pwdlib` takes argon2-cffi's defaults
+of `m=65536,t=3,p=4`, while this template uses OWASP's baseline of `m=19456,t=2,p=1`. A login
+number would therefore measure the cost parameters rather than either framework. Aligning them
+would make it comparable, at roughly three times the memory and work per sign-in; the fairness
+ledger in the benchmark repository still describes the older bcrypt-versus-Argon2 split and needs
+that correction.
 
 ### Honest limitations
 
