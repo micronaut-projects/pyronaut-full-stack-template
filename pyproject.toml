@@ -15,6 +15,11 @@ packages.find.where = ['src']
 
 [tool.pyronaut.toolchain]
 type = 'jvm'
+# Train and reuse Leyden AOT caches under ~/.pyronaut/caches/aot for the JVMs the
+# CLI launches, including the application JVM of `dev`, `run` and `test`. The
+# first launch of each is a training run and is slower; the cache is created in
+# the background once that JVM exits cleanly.
+aot-cache = true
 
 [tool.pyronaut.validation]
 suppressions = [

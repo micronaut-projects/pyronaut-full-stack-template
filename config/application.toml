@@ -144,58 +144,7 @@ virtual = false
 # ---------------------------------------------------------------------------
 # GraalPy context pool.
 #
-# `micronaut.python.pool.size` is deliberately NOT set. It used to be, because
-# the default was `processors * 2` -- around 150 contexts under load on a
-# 12-core machine -- and because a service with injected dependencies could not
-# be pooled, so every request funnelled into the one context its singleton lived
-# in and more contexts only made that worse.
-#
-# Both are fixed as of Pyronaut 0.0.7 (Core 5.2.10): the default is now
-# `processors / 2`, floored at 2 and capped at 8 (micronaut-core#13557 and
-# #13578), and the services here are `@ContextPooled`, which is what makes extra
-# contexts add concurrency instead of dividing the traffic reaching one of them
-# (micronaut-core#13565).
-#
-# Set it only after measuring. The best size depends on how much Python work a
-# request does: on the machine these were taken on, a keyed read was still
-# gaining at 12 contexts while a paged read of 20 rows peaked at 6 and had lost a
-# third by 12. `micronaut-projects/pyronaut-fastapi-benchmark` has the harness.
-# `micronaut.python.pool.warn-wait` logs when a request waits for a context,
-# which is the signal that the pool is too small; nothing warns when it is too
-# large, so that only shows up as throughput falling when you add contexts.
-
-# ---------------------------------------------------------------------------
-# Pooled types that depend on a singleton Python bean.
-#
-# `pyronaut process` warns about each one, because a pooled type exists once per
-# context while a singleton exists once in one context, so calls through that
-# dependency run in that one context however many the pool has. The warning
-# names a cost, not a fault, and these two pairings are ones this application
-# accepts:
-#
-#   MailService          injected by the Login, Users and Utils route modules
-#   PasswordResetTokens  injected by Login
-#
-# Both are reached at most once per request, and only on the signup and
-# password-reset paths, which then wait on SMTP -- so whichever context they run
-# in is not what those requests are spending their time on. Neither is reachable
-# from the endpoints that were actually measured. The alternative is to make them
-# `@ContextPooled` too; that is the right answer for a bean on a hot path, and
-# `UserService`, `ItemService` and the mappers are all pooled for exactly that
-# reason.
-#
-# Name the pairings you have decided about rather than silencing the warning as a
-# whole (`ignoreDependencies = ['*']` does that), so the next one still reaches
-# you.
-#
-# The option arrived in Core 5.2.11 (micronaut-core#13587), which Pyronaut 0.0.8
-# carries, but reading it from here needs one more fix: Pyronaut forwards a
-# setting to the compiler only for an option some registered annotation processor
-# says it supports, and the Python processor did not advertise this one, so the
-# block below is inert until micronaut-core#13608 ships. Until then the same
-# value can be passed directly:
-#
-#   JAVA_TOOL_OPTIONS=-Dmicronaut.python.pooled.ignoreDependencies=MailService,PasswordResetTokens \
-#       pyronaut process
+# `micronaut.python.pool.size` is deliberately NOT set. The default is 
+# `processors / 2`, floored at 2 and capped at 8 
 [micronaut.python.pooled]
 ignoreDependencies = ['MailService', 'PasswordResetTokens']
