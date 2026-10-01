@@ -7,7 +7,7 @@ architectural decisions; most of them have already been made and justified there
 ## State
 
 The application runs and the suite is green: **38 tests, 0 failures, 0 skipped**
-(31 API, 7 browser) on Pyronaut 0.0.7 (Core 5.2.10) and Micronaut Views 6.3.1. `pyronaut install`,
+(31 API, 7 browser) on Pyronaut 0.0.8 (Core 5.2.11) and Micronaut Views 6.3.1. `pyronaut install`,
 `process`, `dev` and `test` all pass against a real MySQL from Test Resources:
 Flyway applies the schema, the first superuser is seeded, login issues a JWT cookie,
 the React 19 pages server-render on GraalJS, emails render from the same bundle and
@@ -135,7 +135,7 @@ Each of these cost a debugging cycle. They are not in the Pyronaut docs.
 | --- | --- |
 | GraalVM `25.4.4+1-graal` | Pyronaut's toolchain minimum is 25, but the Crema native build and GraalPy both want this exact build. Set `JAVA_HOME` to it — a stale Gradle daemon on another JDK fails the native build with `Could not find required field OptimizedDirectCallNode.callCount` |
 | GraalPy `graalpy3.13-25.4.4` | Pinned in pyronaut's own `gradle.properties`. The version must match the GraalVM the project builds against and the one Pyronaut was built with — a mismatch shows up as `Unknown operation code 0` or an NPE creating the GraalPy context, not as a version error |
-| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.7`). Clearing `~/.pyronaut/setup/<version>` means re-running `pyronaut setup`; a dependency change does too |
+| The `pyronaut` CLI | **Not on PyPI.** `pip install pyronaut` fails. Install the wheel from https://github.com/micronaut-projects/pyronaut/releases (latest published: `v0.0.8`). Clearing `~/.pyronaut/setup/<version>` means re-running `pyronaut setup`; a dependency change does too |
 | Docker | Test Resources starts MySQL; Testcontainers starts Mailpit; Playwright needs browsers. On Podman, Ryuk cannot bind-mount the machine's API socket (`operation not supported`), which fails only the Mailpit test — run with `TESTCONTAINERS_RYUK_DISABLED=true`. The `ryuk.disabled` property in `~/.testcontainers.properties` is **not** honoured by Testcontainers 2.x; only the environment variable works |
 | Node.js 22 + npm | Bundling only — not needed at runtime |
 
@@ -281,8 +281,16 @@ Gaps found here go back to their home repositories as **draft PRs**, not local
 workarounds. PLAN.md §12 has the tracked list, and the README has a table of what
 each fix shipped in.
 
-The template carries **no** workaround for an upstream bug and no polyfill of its own,
-and as of Pyronaut 0.0.7 there is nothing left open on the tracked list. Views 6.3.1 took
+The template carries **no** workaround for an upstream bug and no polyfill of its own.
+One item is open: `config/application.toml` names the two pooled-type dependencies this
+application has decided about, which Core 5.2.11 understands
+([micronaut-core#13587](https://github.com/micronaut-projects/micronaut-core/pull/13587))
+but cannot yet be given — Pyronaut forwards a setting to the compiler only for an option a
+registered annotation processor advertises, and the Python processor advertised none, so
+the block is inert until [micronaut-core#13608](https://github.com/micronaut-projects/micronaut-core/pull/13608)
+ships. `pyronaut process` still prints the eight warnings; passing
+`JAVA_TOOL_OPTIONS=-Dmicronaut.python.pooled.ignoreDependencies=MailService,PasswordResetTokens`
+silences them today. Everything else on the tracked list has shipped. Views 6.3.1 took
 the URL polyfills ([#1208](https://github.com/micronaut-projects/micronaut-views/pull/1208)),
 Pyronaut 0.0.6 took POM-only coordinates in the test-resources-server scope
 ([#215](https://github.com/micronaut-projects/pyronaut/pull/215)) and the nested

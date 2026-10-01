@@ -5,7 +5,7 @@ to [Pyronaut](https://github.com/micronaut-projects/pyronaut): the same applicat
 same language, with fewer moving parts.
 
 > **Status: working, incomplete.** The application runs, and `pyronaut test` is green: 38 tests
-> across the API and a real browser, on Pyronaut 0.0.7 and Micronaut Views 6.3.1. The frontend is a
+> across the API and a real browser, on Pyronaut 0.0.8 and Micronaut Views 6.3.1. The frontend is a
 > deliberately plain React 19 stack — see
 > [Current state](#current-state) for what is still missing. The full design and its open questions
 > are in [PLAN.md](./PLAN.md).
@@ -277,7 +277,7 @@ empty commit, which is what stops CI here.
 ## Requirements
 
 - A JVM Pyronaut SDK and the `pyronaut` CLI
-- GraalVM `25.4.4` and GraalPy `graalpy3.13-25.4.4` — the versions Pyronaut 0.0.7 is built against.
+- GraalVM `25.4.4` and GraalPy `graalpy3.13-25.4.4` — the versions Pyronaut 0.0.8 is built against.
   A mismatch surfaces as `Unknown operation code 0` or a Truffle initialisation failure, not as a
   version error
 - Node.js 22 and npm

@@ -163,3 +163,39 @@ virtual = false
 # `micronaut.python.pool.warn-wait` logs when a request waits for a context,
 # which is the signal that the pool is too small; nothing warns when it is too
 # large, so that only shows up as throughput falling when you add contexts.
+
+# ---------------------------------------------------------------------------
+# Pooled types that depend on a singleton Python bean.
+#
+# `pyronaut process` warns about each one, because a pooled type exists once per
+# context while a singleton exists once in one context, so calls through that
+# dependency run in that one context however many the pool has. The warning
+# names a cost, not a fault, and these two pairings are ones this application
+# accepts:
+#
+#   MailService          injected by the Login, Users and Utils route modules
+#   PasswordResetTokens  injected by Login
+#
+# Both are reached at most once per request, and only on the signup and
+# password-reset paths, which then wait on SMTP -- so whichever context they run
+# in is not what those requests are spending their time on. Neither is reachable
+# from the endpoints that were actually measured. The alternative is to make them
+# `@ContextPooled` too; that is the right answer for a bean on a hot path, and
+# `UserService`, `ItemService` and the mappers are all pooled for exactly that
+# reason.
+#
+# Name the pairings you have decided about rather than silencing the warning as a
+# whole (`ignoreDependencies = ['*']` does that), so the next one still reaches
+# you.
+#
+# The option arrived in Core 5.2.11 (micronaut-core#13587), which Pyronaut 0.0.8
+# carries, but reading it from here needs one more fix: Pyronaut forwards a
+# setting to the compiler only for an option some registered annotation processor
+# says it supports, and the Python processor did not advertise this one, so the
+# block below is inert until micronaut-core#13608 ships. Until then the same
+# value can be passed directly:
+#
+#   JAVA_TOOL_OPTIONS=-Dmicronaut.python.pooled.ignoreDependencies=MailService,PasswordResetTokens \
+#       pyronaut process
+[micronaut.python.pooled]
+ignoreDependencies = ['MailService', 'PasswordResetTokens']
