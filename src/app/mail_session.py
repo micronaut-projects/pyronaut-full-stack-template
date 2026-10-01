@@ -1,20 +1,11 @@
 """The Jakarta Mail session, built in Python.
 
-Micronaut Email's JavaMail integration normally builds its session from a
-`javamail.properties` map bound out of configuration. That binding is avoided
-here, because resolving those properties while Micronaut Test Resources is
-active sends the property resolver into an infinite recursion: Test Resources
-is consulted for the unknown key, resolving its own required properties
-re-enters the same resolver, and the stack overflows. It only bites beans built
-lazily during a request, which is exactly when the mail beans are built.
+Micronaut Email's JavaMail integration.
 
 Implementing `SessionProvider` directly sidesteps the whole binding. The values
 come from `AppConfig`, which is bound once at startup and so never touches the
 lazy resolver — and it is another demonstration that a Micronaut Java interface
 can be implemented from Python.
-
-`@Secondary` on Micronaut's own `DefaultSessionProvider` means this bean wins
-without needing `@Replaces`.
 """
 
 from jakarta.inject import Singleton

@@ -10,9 +10,6 @@ DTOs declare, and a source property the target does not have, such as
 ``ownerId`` is the one field that needs saying out loud, because it comes from a
 relation rather than a property of the same name.
 
-``Projections`` exists because the route modules are modules: they have no
-constructor to thread two mapper beans through, and the list envelopes are not
-mapper work. One bean to inject, and the call shape stays ``user_public(user)``.
 """
 
 from typing import Protocol
@@ -40,10 +37,7 @@ class ItemMapper(Protocol):
     def to_public(self, item: Item) -> ItemPublic: ...
 
 
-# Pooled, so a projection runs in whichever context serves the request rather than
-# funnelling every response through the one a singleton would live in. The two mappers
-# it holds are Java: `@Mapper` generates their implementations, so they have no context
-# affinity and are left as singletons. Measured at +26% on `GET /api/v1/users/me`.
+# Pooled, so a projection runs in whichever context serves the request.
 @ContextPooled
 class Projections:
     def __init__(self, users: UserMapper, items: ItemMapper):

@@ -2,9 +2,6 @@
 
 A Python class implementing a Java interface: ``HttpRequestAuthenticationProvider``
 is a Micronaut Security interface, subclassed here directly. This is the
-pattern used by Micronaut Security's own Python test suite
-(``micronaut-security/test-suite-python``), so it is a supported shape rather
-than an experiment.
 
 It replaces ``crud.authenticate`` plus ``deps.get_current_user`` in the
 upstream template: Micronaut runs the provider, issues the JWT and validates it

@@ -54,13 +54,7 @@ class ItemRepository(CrudRepository[Item, UUID], PageableRepository[Item, UUID],
     def findAll(self, pageable: Pageable) -> Page[Item]: ...
 
     # A page of items as public projections, built from the row by Micronaut Data rather
-    # than materialised as entities and mapped afterwards. Nothing per row crosses into
-    # Python, and `owner_id` comes off the column, so neither the owner nor a fetch join is
-    # needed -- which is the whole cost of the entity path: it materialises an Item *and* an
-    # owner User per row purely so the mapper can read `#{item.owner.id}`.
-    #
-    # Measured on a paged read of 20 rows, 32 concurrent clients: 2,199 req/s through the
-    # mapper, 3,157 through these. See the benchmark project's findings.
+    # than materialised as entities and mapped afterwards. 
     @Query(
         "SELECT i.id, i.title, i.description, i.owner_id, i.created_at FROM items i"
         " ORDER BY i.created_at DESC",

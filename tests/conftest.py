@@ -6,9 +6,7 @@ afterwards.
 
 Test isolation note
 -------------------
-``transactional`` is off deliberately, and not because it is broken: it was
-accepted and ignored until Pyronaut 0.0.4
-(https://github.com/micronaut-projects/pyronaut/pull/181), and it works now.
+``transactional`` is off deliberately.
 
 It would not help here. Every test in this suite goes through an HTTP client, so
 the writes happen on the embedded server's own threads in its own transactions,
