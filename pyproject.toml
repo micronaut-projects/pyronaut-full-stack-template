@@ -16,6 +16,11 @@ packages.find.where = ['src']
 [tool.pyronaut.toolchain]
 type = 'jvm'
 
+[tool.pyronaut.validation]
+suppressions = [
+  "micronaut.views.react.dev",
+]
+
 [tool.pyronaut]
 repositories = ['mavenCentral']
 # Pinned to match the versions the Pyronaut CLI itself is built against;
