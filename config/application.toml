@@ -66,6 +66,14 @@ access = ['isAnonymous()']
 [micronaut.security]
 authentication = 'cookie'
 
+# Off, because it is on by default and this application never uses it. Left on,
+# every 401 carries `WWW-Authenticate: Basic realm="..."`, and a browser answers
+# that header with its own credentials dialog — so the session check the login
+# page makes on load popped a basic-auth box over the login form. Credentials
+# are posted to /api/v1/login and carried in a JWT cookie from there on.
+[micronaut.security.basic-auth]
+enabled = false
+
 [micronaut.security.token.jwt.signatures.secret.generator]
 secret = 'changethis-changethis-changethis-changethis'
 jws-algorithm = 'HS256'
