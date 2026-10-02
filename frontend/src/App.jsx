@@ -6,8 +6,14 @@
 // back to a client fetch. That is what keeps the server rendering real rather
 // than decorative — see PLAN.md section 8.3.
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Link, Route, Routes, useSearchParams } from 'react-router-dom';
-import { StaticRouter } from 'react-router-dom/server';
+import {
+  BrowserRouter,
+  Link,
+  Route,
+  Routes,
+  StaticRouter,
+  useSearchParams,
+} from 'react-router';
 
 import { api } from './api';
 import { Alert, AuthCard, Field, NotFound, Page } from './components';

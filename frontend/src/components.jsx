@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export function Field({ id, label, type = 'text', value, onChange, error, ...rest }) {
   return (
