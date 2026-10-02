@@ -1,14 +1,8 @@
 name: CI
 
-# Two things about the Pyronaut toolchain shape this file, and both are
-# temporary:
-#
-#   - setup-pyronaut has no release tag yet, so the action is referenced by
-#     branch. Move to `@v1` once one exists — a branch reference means a change
-#     to the action can break this workflow without anything changing here.
-#   - The Pyronaut CLI is not on PyPI. It does not need to be: the action
-#     downloads the wheel from the GitHub release of `pyronaut-repository`
-#     tagged `v<pyronaut-version>`, and `latest` is the default.
+# The Pyronaut CLI is not on PyPI, and does not need to be: setup-pyronaut
+# downloads the wheel from the GitHub release of `pyronaut-repository` tagged
+# `v<pyronaut-version>`, and `latest` is the default.
 
 on:
   push:
@@ -69,17 +63,15 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: playwright-${{ runner.os }}-
 
-      - uses: micronaut-projects/setup-pyronaut@main
+      - uses: micronaut-projects/setup-pyronaut@v1
         with:
           java-version: '25'
-          # Must match the GraalVM that the GraalPy bundled with the CLI was
-          # built against. A mismatch does not report itself as a version
-          # error: it surfaces as `Unknown operation code 0`, or an NPE
-          # creating the GraalPy context.
-          graalvm-version: '25.4'
-          # `graalpy-version` is deliberately unset, which takes the version the
-          # installed CLI bundles — the one half of that pairing worth pinning
-          # by hand is the JDK above.
+          # `graalvm-version` and `graalpy-version` are both left at their
+          # defaults on purpose. The GraalVM and the GraalPy have to match, and
+          # a mismatch never says so — it surfaces as `Unknown operation code 0`
+          # or an NPE creating the GraalPy context. The action's defaults track
+          # the pairing the installed CLI was built against, which pinning a
+          # version here would quietly break at the next Pyronaut release.
           #
           # `pyronaut-version` is left at its default of `latest`, which takes
           # the wheel from Pyronaut's newest GitHub release. Pin it here if a
