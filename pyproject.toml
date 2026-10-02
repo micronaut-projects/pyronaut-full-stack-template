@@ -89,7 +89,7 @@ runtime = [
   'io.micronaut.email:micronaut-email-javamail',
   'io.micronaut.email:micronaut-email-template',
   'org.eclipse.angus:angus-mail',
-  'io.micronaut.views:micronaut-views-react:6.3.1',
+  'io.micronaut.views:micronaut-views-react',
   # GraalJS, pinned to the GraalVM the project builds against. The aggregator is
   # POM-only, so it takes the four-part form — a three-part coordinate is
   # resolved as a jar and fails. This needs Pyronaut 0.0.6, which accepts the
@@ -100,14 +100,20 @@ runtime = [
   'io.micronaut.pyronaut:micronaut-pyronaut-logback',
 ]
 development-runtime = [
-  'io.micronaut.controlpanel:micronaut-control-panel-datasource',
+  # `micronaut-control-panel-datasource` used to be listed here and must not be.
+  # `tool.pyronaut.control-panel` already brings the control panel in, as one
+  # self-consistent set, and declaring one of its modules here resolved that one
+  # through the platform BOM instead — 2.2.0 against the 2.1.0 the CLI supplies
+  # for the rest. The application then failed to start on a class the newer
+  # module expects from the older one:
+  #   NoClassDefFoundError: io/micronaut/controlpanel/ui/ControlPanelRenderer
   # Refreshes the browser when the SSR bundle is rebuilt, so `npm run watch` beside
   # `pyronaut dev` puts an edit on screen without touching the browser. Development
   # only: it is not on a production classpath at all, and it needs both the dev
   # environment and `micronaut.views.react.dev.enabled`, which
   # config/application-dev.toml already sets.
   #
-  'io.micronaut.views:micronaut-views-react-dev:6.3.1',
+  'io.micronaut.views:micronaut-views-react-dev',
   # `micronaut-runtime-osx` used to be listed here: without it macOS file watching
   # falls back to a slow polling implementation, and no watch event arrived in over
   # two minutes. The CLI now adds it on macOS in this scope by itself

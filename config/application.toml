@@ -33,9 +33,6 @@ smtp-tls = false
 # Server-rendered React. One bundle holds every render root: the `App` page
 # tree and the transactional email components.
 # ---------------------------------------------------------------------------
-[micronaut.views]
-folder = '.'
-
 [micronaut.views.react]
 server-bundle-path = 'classpath:ssr-components.mjs'
 client-bundle-url = '/static/client.js'
