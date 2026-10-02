@@ -15,19 +15,11 @@ packages.find.where = ['src']
 
 [tool.pyronaut.toolchain]
 type = 'jvm'
-# Train and reuse Leyden AOT caches under ~/.pyronaut/caches/aot for the JVMs the
-# CLI launches, including the application JVM of `dev`, `run` and `test`. The
-# first launch of each is a training run and is slower; the cache is created in
-# the background once that JVM exits cleanly.
 aot-cache = true
 
 [tool.pyronaut.validation]
 suppressions = [
   "micronaut.views.react.dev",
-  # `micronaut.python.pooled.ignoreDependencies` is read by the annotation
-  # processor, not by the running application -- `pyronaut process` picks it out
-  # of config/application.toml -- so no bean declares it and validation would
-  # report it as unknown.
   "micronaut.python.pooled",
 ]
 
@@ -47,11 +39,6 @@ test-resources = 'tests-config'
 # `views` holds the generated server-render bundle, `static` the generated
 # hydration bundle and the assets served from /static/**.
 additional-resources = ['views', 'static']
-# `views` and `static` are not repeated under `additional-test-resources`:
-# `additional-resources` already reaches the test classpath correctly. What
-# does not work is JUnit tests seeing that classpath at all — see
-# https://github.com/micronaut-projects/pyronaut/issues/169 and the override in
-# tests-config/application-test.toml.
 
 [tool.pyronaut.dev]
 restart-excludes = ['views', 'static']
@@ -65,8 +52,7 @@ enabled = true
 additional-modules = ['jdbc-mysql']
 client-timeout = 180
 # Keep the Test Resources server (and the MySQL container it owns) alive across
-# `pyronaut dev` restarts. Without this each restart starts a fresh container,
-# which costs ~12s every time. Stop it explicitly with
+# `pyronaut dev` restarts. Stop it explicitly with
 # `pyronaut test-resources-server stop`.
 shared-server = true
 
@@ -81,43 +67,17 @@ runtime = [
   'io.micronaut.serde:micronaut-serde-jackson',
   'io.micronaut.validation:micronaut-validation',
   'io.micronaut.security:micronaut-security-jwt',
-  # Argon2id password hashing, via BouncyCastle's own implementation rather than
-  # a framework's encoder. One jar, no transitive dependencies, pure Java with
-  # no JNI, which keeps a future native image blocked only on GraalJS. See
-  # PLAN.md section 7.3 and src-java/fullstack/security/PasswordHasher.java.
+  # Argon2id password hashing, via BouncyCastle
   'org.bouncycastle:bcprov-jdk18on:1.84',
   'io.micronaut.email:micronaut-email-javamail',
   'io.micronaut.email:micronaut-email-template',
   'org.eclipse.angus:angus-mail',
   'io.micronaut.views:micronaut-views-react',
-  # GraalJS, pinned to the GraalVM the project builds against. The aggregator is
-  # POM-only, so it takes the four-part form — a three-part coordinate is
-  # resolved as a jar and fails. This needs Pyronaut 0.0.6, which accepts the
-  # four-part form in the test-resources-server scope too (pyronaut#215); 0.0.5
-  # accepted it everywhere else (pyronaut#170). Before that this had to be
-  # spelled out as the three concrete jars the aggregator pulls in.
   'org.graalvm.polyglot:js:pom:25.4.4.1.1',
   'io.micronaut.pyronaut:micronaut-pyronaut-logback',
 ]
 development-runtime = [
-  # `micronaut-control-panel-datasource` used to be listed here and must not be.
-  # `tool.pyronaut.control-panel` already brings the control panel in, as one
-  # self-consistent set, and declaring one of its modules here resolved that one
-  # through the platform BOM instead — 2.2.0 against the 2.1.0 the CLI supplies
-  # for the rest. The application then failed to start on a class the newer
-  # module expects from the older one:
-  #   NoClassDefFoundError: io/micronaut/controlpanel/ui/ControlPanelRenderer
-  # Refreshes the browser when the SSR bundle is rebuilt, so `npm run watch` beside
-  # `pyronaut dev` puts an edit on screen without touching the browser. Development
-  # only: it is not on a production classpath at all, and it needs both the dev
-  # environment and `micronaut.views.react.dev.enabled`, which
-  # config/application-dev.toml already sets.
-  #
-  'io.micronaut.views:micronaut-views-react-dev',
-  # `micronaut-runtime-osx` used to be listed here: without it macOS file watching
-  # falls back to a slow polling implementation, and no watch event arrived in over
-  # two minutes. The CLI now adds it on macOS in this scope by itself
-  # (pyronaut#190), so it is gone from here.
+  'io.micronaut.views:micronaut-views-react-dev'
 ]
 build = [
   'io.micronaut:micronaut-context-python',
@@ -133,9 +93,6 @@ test = [
   'io.micronaut.test:micronaut-test-junit5',
   'io.micronaut.testresources:micronaut-test-resources-jdbc-mysql',
   'io.micronaut.email:micronaut-email-mailpit-http-client',
-  'org.testcontainers:testcontainers',
-  # Playwright Java. No Micronaut BOM manages it, so the version is explicit.
-  # The JUnit 5 extension (com.microsoft.playwright.junit.UsePlaywright) ships
-  # inside this jar; there is no separate playwright-junit artifact.
+  'org.testcontainers:testcontainers',  
   'com.microsoft.playwright:playwright:1.63.0',
 ]
