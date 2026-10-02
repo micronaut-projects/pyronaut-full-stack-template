@@ -115,3 +115,10 @@ if (failures.length) {
   process.exit(1);
 }
 console.log('\nAll server-render checks passed.');
+// Exit explicitly. Importing the server bundle starts React's scheduler, whose
+// MessageChannel keeps Node's event loop alive, so falling off the end here
+// hangs instead of returning — and only on the passing path, because the
+// failing one above exits. `npm run check` ends with this script, so the hang
+// was the whole command never returning: on a CI runner it sat for 34 minutes
+// after printing this line, until the job was killed.
+process.exit(0);
