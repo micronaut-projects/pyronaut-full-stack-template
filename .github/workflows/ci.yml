@@ -1,17 +1,14 @@
 name: CI
 
-# NOTE: this workflow has never run. This organisation has no GitHub Actions
-# minutes until 1 October 2026, so it is written, reviewed by inspection, and
-# validated by running the same command sequence locally. Treat it as
-# unverified until it has actually executed on a runner.
+# Two things about the Pyronaut toolchain shape this file, and both are
+# temporary:
 #
-# It also depends on two things that are not ready yet; see PLAN.md section 12:
-#   - micronaut-projects/setup-pyronaut has no v1 tag. Its main branch is an
-#     empty commit and the action lives on an unmerged branch, so `@v1` will
-#     not resolve. Pin a SHA, or wait for the release.
-#   - The pyronaut CLI is not on PyPI, and the action downloads Pyronaut's
-#     native launchers from GitHub releases of a private repository, so the
-#     default github.token is not sufficient.
+#   - setup-pyronaut has no release tag yet, so the action is referenced by
+#     branch. Move to `@v1` once one exists — a branch reference means a change
+#     to the action can break this workflow without anything changing here.
+#   - The Pyronaut CLI is not published on PyPI, so the wheel is installed from
+#     a GitHub release asset by URL. Drop `pyronaut-wheel` and let
+#     `pyronaut-version` resolve once the CLI is on PyPI.
 
 on:
   push:
@@ -55,14 +52,21 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: playwright-${{ runner.os }}-
 
-      - uses: micronaut-projects/setup-pyronaut@v1
+      - uses: micronaut-projects/setup-pyronaut@main
         with:
           java-version: '25'
-          graalvm-version: '25.3'
-          # Required while micronaut-projects/pyronaut is private: the launcher
-          # bundles come from its GitHub releases and the default token is
-          # scoped to this repository only.
-          github-token: ${{ secrets.PYRONAUT_RELEASE_TOKEN || github.token }}
+          # Must match the GraalVM that the GraalPy bundled with the CLI was
+          # built against. A mismatch does not report itself as a version
+          # error: it surfaces as `Unknown operation code 0`, or an NPE
+          # creating the GraalPy context.
+          graalvm-version: '25.4'
+          # `graalpy-version` is deliberately unset, which takes the version the
+          # installed CLI bundles — the one half of that pairing worth pinning
+          # by hand is the JDK above.
+          pyronaut-wheel: https://github.com/micronaut-projects/pyronaut/releases/download/v0.0.8/pyronaut-0.0.8-py3-none-any.whl
+          # The launcher bundles come from Pyronaut's GitHub releases, which are
+          # public, so the job's own token is enough.
+          github-token: ${{ github.token }}
 
       - run: pyronaut install
 
@@ -91,7 +95,7 @@ jobs:
           path: __pyronaut__/reports/tests/
           if-no-files-found: ignore
 
-      # Proves the deployable builds. Native is not attempted: GraalJS is not
-      # supported inside a GraalVM native image, and server-side rendering needs
-      # it. See PLAN.md section 4.4.
+      # Proves the deployable builds. Native is not attempted: the Pyronaut
+      # native launchers carry GraalPy but no GraalJS, and every server-rendered
+      # route needs it.
       - run: pyronaut build --jvm --docker

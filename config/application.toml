@@ -146,5 +146,5 @@ virtual = false
 #
 # `micronaut.python.pool.size` is deliberately NOT set. The default is 
 # `processors / 2`, floored at 2 and capped at 8 
-[micronaut.python.pooled]
+[micronaut.python.pool]
 ignoreDependencies = ['MailService', 'PasswordResetTokens']
