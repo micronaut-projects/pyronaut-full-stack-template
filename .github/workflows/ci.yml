@@ -35,12 +35,29 @@ jobs:
 
       - run: npm ci
 
-      # Unit tests, both webpack bundles, and a server-render smoke check over
-      # every page and every email. The bundles are not committed, and both
-      # `pyronaut dev` and `pyronaut test` need them: without
-      # views/ssr-components.mjs every server-rendered route returns 500.
-      - name: Build and check the frontend
-        run: npm run check
+      # `npm run check` is these three in one command, and it is kept apart here
+      # on purpose: run as one step, a stall shows only as the whole step
+      # hanging until the job timeout, with no way to tell which part stalled.
+      # Each one carries its own timeout for the same reason.
+      - name: Frontend unit tests
+        timeout-minutes: 5
+        # --ci so a missing snapshot fails instead of being written, and
+        # --forceExit because a handle a test leaves open otherwise keeps the
+        # runner waiting after the last assertion has passed.
+        run: npx jest --ci --forceExit
+
+      # The bundles are not committed, and both `pyronaut dev` and
+      # `pyronaut test` need them: without views/ssr-components.mjs every
+      # server-rendered route returns 500.
+      - name: Build the bundles
+        timeout-minutes: 15
+        run: npm run build
+
+      # Renders every page and every email from the built bundle. On Node, so
+      # it proves the bundle shape rather than GraalJS compatibility.
+      - name: Server-render smoke check
+        timeout-minutes: 5
+        run: npm run verify:ssr
 
       # Playwright downloads every browser on first use — Chromium, the
       # headless shell, and more after that, around 400 MB in total. Cache it
