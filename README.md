@@ -169,7 +169,42 @@ pyronaut dev
 
 That is the whole local stack. `pyronaut dev` starts a MySQL container through Test Resources,
 applies the Flyway migration, creates the first superuser and serves the application on
-<http://localhost:8080>.
+<http://localhost:8080>. Wait for:
+
+```
+Startup completed in 10833ms. Server Running: http://localhost:8080
+```
+
+The first start also pulls the MySQL image, so it takes longer than the ten seconds or so that
+every start after it does.
+
+`npm run build` is not optional. The bundles are gitignored, and both the pages and the emails are
+rendered from `views/ssr-components.mjs`; without it every server-rendered route returns 500.
+
+### Opening the home page
+
+Open <http://localhost:8080/>. The home page is the dashboard and it needs a session, so signed out
+you land on the login page instead.
+
+Sign in as the superuser that was seeded during startup. That is `APP_FIRST_SUPERUSER` and
+`APP_FIRST_SUPERUSER_PASSWORD` from your `.env` — `admin@example.com` / `changethis` if you have
+not changed them yet. Signing in sets a JWT in an `HttpOnly` cookie and lands on the dashboard.
+
+Only the browser is redirected. `PageRedirectAuthorizationHandler` keys off `Accept: text/html`, so
+`/api/v1/**` still answers an unauthenticated caller with 401 rather than sending a `fetch` to a
+login page it would read as success.
+
+| Page | |
+| --- | --- |
+| [`/`](http://localhost:8080/) | The dashboard. Signed in only |
+| [`/items`](http://localhost:8080/items) | The item list, server-rendered with its first page already filled in |
+| [`/settings`](http://localhost:8080/settings) | Account settings |
+| [`/admin`](http://localhost:8080/admin) | User administration. Superusers only — a signed-in ordinary user gets a 403 |
+| [`/signup`](http://localhost:8080/signup) | Registration, for a user of your own |
+| [`/recover-password`](http://localhost:8080/recover-password) | Sends a reset mail, which is where Mailpit below comes in |
+
+Every one of those is rendered on the server by GraalJS and then hydrated, so view-source shows the
+finished HTML rather than an empty root element.
 
 For local mail, run Mailpit and read it at <http://localhost:8025>:
 

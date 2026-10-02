@@ -148,11 +148,28 @@ def test_the_hydration_bundle_is_served():
 
 
 @Test
-def test_the_dashboard_is_not_reachable_signed_out():
+def test_the_dashboard_sends_a_signed_out_browser_to_the_login_page():
+    """A person gets the login page; an API client still gets 401.
+
+    Both halves matter. The redirect comes from `PageRedirectAuthorizationHandler`,
+    which keys off `Accept: text/html` precisely so that it cannot reach the API —
+    and the API answering 303 instead of 401 is what the hydrated client would
+    silently mistake for a successful call.
+    """
     page = _new_page()
     try:
         response = page.navigate(f"{_base_url()}/")
-        assert response.status() == 401
+        assert response.status() == 200, (
+            f"expected the login page, got {response.status()}"
+        )
+        assert page.url().rstrip("/").endswith("/login"), (
+            f"signed-out dashboard did not reach the login page. url={page.url()}"
+        )
+
+        api = page.request().get(f"{_base_url()}/api/v1/users/me")
+        assert api.status() == 401, (
+            f"the API must stay 401 for an unauthenticated caller, got {api.status()}"
+        )
     finally:
         page.close()
 
