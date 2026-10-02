@@ -6,9 +6,9 @@ name: CI
 #   - setup-pyronaut has no release tag yet, so the action is referenced by
 #     branch. Move to `@v1` once one exists — a branch reference means a change
 #     to the action can break this workflow without anything changing here.
-#   - The Pyronaut CLI is not published on PyPI, so the wheel is installed from
-#     a GitHub release asset by URL. Drop `pyronaut-wheel` and let
-#     `pyronaut-version` resolve once the CLI is on PyPI.
+#   - The Pyronaut CLI is not on PyPI. It does not need to be: the action
+#     downloads the wheel from the GitHub release of `pyronaut-repository`
+#     tagged `v<pyronaut-version>`, and `latest` is the default.
 
 on:
   push:
@@ -63,9 +63,13 @@ jobs:
           # `graalpy-version` is deliberately unset, which takes the version the
           # installed CLI bundles — the one half of that pairing worth pinning
           # by hand is the JDK above.
-          pyronaut-wheel: https://github.com/micronaut-projects/pyronaut/releases/download/v0.0.8/pyronaut-0.0.8-py3-none-any.whl
-          # The launcher bundles come from Pyronaut's GitHub releases, which are
-          # public, so the job's own token is enough.
+          #
+          # `pyronaut-version` is left at its default of `latest`, which takes
+          # the wheel from Pyronaut's newest GitHub release. Pin it here if a
+          # release ever has to be skipped.
+          #
+          # The wheel and the launcher bundles both come from those releases,
+          # which are public, so the job's own token is enough.
           github-token: ${{ github.token }}
 
       - run: pyronaut install
