@@ -6,21 +6,19 @@ same language, with fewer moving parts.
 
 
 - 🐍 **Python** application code on the Micronaut programming model, running on GraalPy.
-- 🗄️ **[Micronaut Data JDBC](https://micronaut-projects.github.io/micronaut-data/latest/guide/)**
+- 🗄️ **[Micronaut Data JDBC](https://docs.micronaut.io/5.2.x/data/)**
   with MySQL — SQL generated from method names at build time.
-- 🧱 **[Micronaut Validation](https://micronaut-projects.github.io/micronaut-validation/latest/guide/)**
-  and **[Micronaut Serialization](https://micronaut-projects.github.io/micronaut-serialization/latest/guide/)**
-  instead of Pydantic.
-- 🔑 **[Micronaut Security](https://micronaut-projects.github.io/micronaut-security/latest/guide/)**
-  — JWT in an HttpOnly cookie, so server rendering can read the user.
-- ⚛️ **Server-rendered React** on GraalJS through
-  **[Micronaut Views](https://micronaut-projects.github.io/micronaut-views/latest/guide/)**
-  — in the same JVM, with no Node in production.
-- ✉️ **[Micronaut Email](https://micronaut-projects.github.io/micronaut-email/latest/guide/)**
-  with React email templates rendered by the same GraalJS engine.
+- 🧱 **[Micronaut Validation](https://docs.micronaut.io/5.2.x/validation/)** and
+  **[Micronaut Serialization](https://docs.micronaut.io/5.2.x/serde/)** instead of Pydantic.
+- 🔑 **[Micronaut Security](https://docs.micronaut.io/5.2.x/security/)** — JWT in an HttpOnly
+  cookie, so server rendering can read the user.
+- ⚛️ **Server-rendered React** on GraalJS through **[Micronaut Views](https://docs.micronaut.io/5.2.x/views/)**,
+  in the same JVM. No Node in production.
+- ✉️ **[Micronaut Email](https://docs.micronaut.io/5.2.x/email/)** with React email templates
+  rendered by the same GraalJS engine.
 - 📬 **Mailpit** for local mail, started by Testcontainers in tests.
 - 🧪 **pytest** through Micronaut's integration, plus **Playwright Java** for end-to-end tests.
-- 🐋 **No Docker Compose.** [Micronaut Test Resources](https://micronaut-projects.github.io/micronaut-test-resources/latest/guide/)
+- 🐋 **No Docker Compose.** [Micronaut Test Resources](https://docs.micronaut.io/5.2.x/test-resources/)
   starts MySQL on demand.
 
 ## What you no longer have to own
@@ -32,13 +30,13 @@ The upstream full stack template was a complex mishmash of scripts to orchestrat
 | `compose.yml`, `compose.override.yml`, `compose.deploy.yml` | *nothing* | Test Resources starts MySQL on demand; Testcontainers starts Mailpit for tests. Services are declared by dependency, not by YAML. |
 | A Traefik reverse proxy and its TLS config | *not required* | The API and the UI are the same origin on the same server. |
 | A separate frontend container | *nothing* | The JVM serves the rendered HTML, the hydration bundle and the static assets. |
-| An Adminer container | *nothing* | The [Micronaut Control Panel](https://micronaut-projects.github.io/micronaut-control-panel/latest/guide/) covers datasource inspection. Activate with `pyronaut dev --control-panel`. |
+| An Adminer container | *nothing* | The [Micronaut Control Panel](https://docs.micronaut.io/5.2.x/control-panel/) covers datasource inspection. Activate with `pyronaut dev --control-panel`. |
 | Three Dockerfiles | `pyronaut build --jvm --docker` | The build tool writes the Dockerfile. |
 | Five shell lifecycle scripts | `pyronaut test`, `pyronaut build` | Lifecycle is a CLI concern. |
-| `alembic.ini`, `env.py`, `script.py.mako`, 5 revisions | `config/db/migration/V1__initial_schema.sql` | [Micronaut Flyway](https://micronaut-projects.github.io/micronaut-flyway/latest/guide/) needs no runtime scaffolding. |
+| `alembic.ini`, `env.py`, `script.py.mako`, 5 revisions | `config/db/migration/V1__initial_schema.sql` | [Micronaut Flyway](https://docs.micronaut.io/5.2.x/flyway/) needs no runtime scaffolding. |
 | A Python process **and** a Node process in development | **one JVM** | GraalPy and GraalJS run in the same VM. Node is a build-time bundler only. |
 | N uvicorn workers to get past the GIL | one process, `micronaut.python.pool` | Several GraalPy contexts in one JVM, each with its own lock. |
-| A running app import to produce `openapi.json` | a build artifact | [Micronaut OpenAPI](https://micronaut-projects.github.io/micronaut-openapi/latest/guide/) generates the document during `pyronaut process`. |
+| A running app import to produce `openapi.json` | a build artifact | [Micronaut OpenAPI](https://docs.micronaut.io/5.2.x/openapi/) generates the document during `pyronaut process`. |
 | React Email as a separate workspace compiled to Jinja | `frontend/emails/*.jsx` in the same bundle | Rendered by the GraalJS engine that renders the pages. |
 
 ## Improvements to the original FastAPI template
