@@ -5,7 +5,7 @@
 -- 1. Primary keys are CHAR(36) rather than BINARY(16). MySQL has no native
 --    UUID type. BINARY(16) is more compact and indexes marginally better;
 --    CHAR(36) is legible in a `SELECT`, which matters more in a template that
---    exists to be read. See PLAN.md section 7.1.
+--    exists to be read.
 --
 -- 2. The item -> user cascade is declared here, in the database, rather than
 --    in the mapping layer. Micronaut Data JDBC does not cascade deletes, and

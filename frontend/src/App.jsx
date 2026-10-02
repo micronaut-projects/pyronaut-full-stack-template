@@ -4,7 +4,7 @@
 // controller returned (`initial`), and once in the browser after hydration. A
 // screen that has `initial` renders it straight away; one that does not falls
 // back to a client fetch. That is what keeps the server rendering real rather
-// than decorative — see PLAN.md section 8.3.
+// than decorative.
 import React, { useEffect, useState } from 'react';
 import {
   BrowserRouter,

@@ -61,7 +61,7 @@ access = ['isAnonymous()']
 
 # ---------------------------------------------------------------------------
 # Security. JWT in an HttpOnly cookie so that server-side rendering can read
-# the authenticated user from the request. See PLAN.md section 4.2.
+# the authenticated user from the request.
 # ---------------------------------------------------------------------------
 [micronaut.security]
 authentication = 'cookie'

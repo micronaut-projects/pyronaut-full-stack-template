@@ -75,5 +75,5 @@ class MailService:
     def render_reset_password_html(self, to: str, email: str, token: str) -> str:
         """Used by the superuser-only endpoint that returns the email HTML."""
         raise NotImplementedError(
-            "Wire to ViewsRenderer once the email render path is verified; see PLAN.md 11.6"
+            "Wire to ViewsRenderer once the email render path is verified"
         )

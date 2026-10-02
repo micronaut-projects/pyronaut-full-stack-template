@@ -2,7 +2,7 @@
 //
 // Once `pyronaut process` is running, `npm run generate-client` replaces the
 // hand-written calls below with the typed SDK generated from the compile-time
-// OpenAPI document (see openapi-ts.config.ts and PLAN.md section 8.2).
+// OpenAPI document (see openapi-ts.config.ts).
 // Authentication rides an HttpOnly cookie, so nothing here touches a token.
 
 export async function request(url, options = {}) {

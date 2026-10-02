@@ -1,9 +1,9 @@
 """Spike: can Playwright Java be driven from Python?
 
-This is the question PLAN.md section 11.2 flags as the largest remaining
-unknown. It is deliberately the smallest possible test — launch Chromium, set
-some content, read it back — so that a failure points at the interop rather
-than at the application.
+It was the largest unknown in this port, and the answer is yes — `LoginFlowTest`
+drives a real browser through the application on the strength of it. This stays
+as the smallest possible test — launch Chromium, set some content, read it back
+— so that a failure points at the interop rather than at the application.
 
 It is a JUnit 5 test written as a Python module, not a pytest: `MicronautTest()`
 at module level hands the file to the JUnit engine, and `[tool.pyronaut.test]

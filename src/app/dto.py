@@ -144,7 +144,7 @@ class ApiError:
     The upstream template returns ``{"detail": "..."}`` for errors but
     ``{"detail": [...]}`` for validation failures, so its generated TypeScript
     client has to branch on the type of ``detail``. One shape is easier to
-    consume and easier to document. See PLAN.md section 1.3.
+    consume and easier to document.
     """
 
     message: str

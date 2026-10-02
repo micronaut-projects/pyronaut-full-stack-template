@@ -17,7 +17,7 @@ import java.util.Base64;
  * implementation directly: one jar, pure Java, no JNI and no second framework on the class path. A
  * JNI-backed Argon2 binding would add a blocker to a future native image, and GraalJS is already
  * the only one. Argon2id won the Password Hashing Competition and is the current OWASP first
- * choice, where bcrypt is the fallback for platforms that have no Argon2 — see PLAN.md section 7.3.
+ * choice, where bcrypt is the fallback for platforms that have no Argon2.
  *
  * <p>The cost parameters below are OWASP's baseline for Argon2id: 19 MiB of memory, two passes, one
  * lane. Memory is the point of the algorithm — it is what makes a GPU no better at this than a CPU
