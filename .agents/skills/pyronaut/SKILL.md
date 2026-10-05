@@ -104,12 +104,24 @@ class UserService:
 
 ```java
 // Java injecting a Python bean, through the class Pyronaut generates for it
-public CurrentUser(UserService users) { this.users = users; }
-
-public @Nullable User of(Authentication authentication) {
-    return users.by_id(UUID.fromString(authentication.getName()));
-}
+public Greeter(UserService users) { this.users = users; }
 ```
+
+Micronaut's extension points can be implemented in Python too. `app/security/signed_in_user.py` has
+a `@ServerFilter` and a `TypedRequestArgumentBinder[User]`, which are what let a route take the
+signed-in user as a parameter. Two things to know when writing one:
+
+- **It has to be a singleton.** A `@ContextPooled` class is generated without the Java interfaces it
+  declares, so a pooled binder fails at startup with a `ClassCastException` and a pooled filter
+  loses `Ordered`.
+- **Declare the parameter `user: Annotated[User, Hidden]`.** Without `Hidden`, Micronaut OpenAPI
+  documents it as a required query parameter carrying the whole entity. A type alias for that
+  annotation does not work — the processor does not resolve it, and the parameter becomes an
+  unbindable `Object`.
+
+An entity bound as a route parameter arrives as the Python dataclass, with a `uuid.UUID` id. One a
+repository returned is still the Java object, and `str()` of its id is `UUID('...')`. Comparing the
+two with `str(a.id) == str(b.id)` is wrong without complaint; use `same_id` from `app/ids.py`.
 
 Two reasons to move a bean to Java, and "Java is faster" is not one of them at this granularity:
 

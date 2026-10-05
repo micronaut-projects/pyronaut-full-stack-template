@@ -101,7 +101,7 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
 
 ### Two languages, one container, no binding layer
 
-Two of this application's components are written in Java, in `src-java/`, and Python code can invoke it with a simple import:
+One of this application's components is written in Java, in `src-java/`, and Python code can invoke it with a simple import:
 
 ```python
 from fullstack.security import PasswordHasher   # a Java class
@@ -111,19 +111,21 @@ class UserService:
     def __init__(self, users: UserRepository, passwords: PasswordHasher):
 ```
 
-It goes the other way too. `CurrentUser` is Java and injects `UserService`, a Python class, taking
-the Python entity back as a return value:
+Micronaut's own extension points are implemented in Python the same way. `app/security/signed_in_user.py`
+holds a server filter and a `TypedRequestArgumentBinder`, both Python classes: the filter looks the
+signed-in user up once per request, after Micronaut Security has authenticated it, and the binder
+hands it to any route that asks for one:
 
-```java
-public CurrentUser(UserService users) { this.users = users; }
-
-public @Nullable User of(Authentication authentication) {
-    return users.by_id(UUID.fromString(authentication.getName()));
-}
+```python
+@Get("/me")
+def read_me(user: Annotated[User, Hidden]) -> UserPublic:
+    return projections.user_public(user)
 ```
 
-Pyronaut generates a Java class for each Python type, so this is ordinary compilation: rename the
-Python method and the Java stops compiling. One container, one configuration, one `pyronaut test`.
+`Hidden` keeps the parameter out of the OpenAPI document; it comes from the session, not the caller.
+
+Pyronaut generates a Java class for each Python type, so Micronaut sees ordinary beans. One
+container, one configuration, one `pyronaut test`.
 
 ### It is faster than the original
 

@@ -16,17 +16,17 @@ the TypeScript client is generated from OpenAPI either way, so nothing needs it.
 """
 
 from typing import Annotated
-from uuid import UUID
 
 from jakarta.inject import Inject
 from jakarta.validation import Valid
 from micronaut.http import HttpResponse
 from micronaut.http.annotation import Body, Controller, Get, Post
 from micronaut.security.annotation import Secured
-from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
+from swagger.v3.oas.annotations import Hidden
 
 from ..dto import Message, NewPassword, UserPublic
+from ..entities import User
 from ..mappers import Projections
 from ..security.tokens import PasswordResetTokens
 from ..services.mail import MailService
@@ -42,9 +42,9 @@ projections: Annotated[Projections, Inject]
 
 @Get("/login/test-token")
 @Secured(SecurityRule.IS_AUTHENTICATED)
-def test_token(authentication: Authentication) -> UserPublic:
+def test_token(user: Annotated[User, Hidden]) -> UserPublic:
     """Verify an access token and return the user it belongs to."""
-    return projections.user_public(users.by_id(UUID(str(authentication.getName()))))
+    return projections.user_public(user)
 
 
 @Post("/password-recovery/{email}")

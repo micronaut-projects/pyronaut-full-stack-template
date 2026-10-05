@@ -77,6 +77,40 @@ def test_password_change_requires_the_current_password(superuser_client):
     assert response.json()["message"] == "Incorrect password"
 
 
+def test_a_session_outliving_its_account_is_signed_out(client, unique_email):
+    """The cookie still verifies after the account is gone; it must not be a session.
+
+    The user is looked up on every request, so a token for nobody has to read as
+    401 rather than reach a route with no user to work with.
+    """
+    email = unique_email("gone")
+    client.post(
+        "/api/v1/users/signup", json={"email": email, "password": "a-good-password"}
+    )
+    assert sign_in(client, email, "a-good-password") == LOGIN_SUCCESS
+    assert client.delete("/api/v1/users/me").status_code == 200
+
+    assert client.get("/api/v1/users/me").status_code == 401
+    assert client.get("/api/v1/login/test-token").status_code == 401
+
+
+def test_a_plain_user_may_read_their_own_record_and_no_other(superuser_client, unique_email):
+    admin_id = superuser_client.get("/api/v1/users/me").json()["id"]
+
+    # The same client: signing in again replaces the superuser's session.
+    client = superuser_client
+    email = unique_email("self")
+    created = client.post(
+        "/api/v1/users/signup", json={"email": email, "password": "a-good-password"}
+    ).json()
+    assert sign_in(client, email, "a-good-password") == LOGIN_SUCCESS
+
+    own = client.get(f"/api/v1/users/{created['id']}")
+    assert own.status_code == 200, own.text
+    assert own.json()["email"] == email
+    assert client.get(f"/api/v1/users/{admin_id}").status_code == 403
+
+
 def test_listing_users_requires_superuser(client, unique_email):
     """A plain user must not be able to read the user directory."""
     email = unique_email("plain")

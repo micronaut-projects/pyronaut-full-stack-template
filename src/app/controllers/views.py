@@ -24,11 +24,11 @@ from typing import Annotated
 from jakarta.inject import Inject
 from micronaut.http.annotation import Get, QueryValue
 from micronaut.security.annotation import Secured
-from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
 from micronaut.views import View
-from fullstack.security import CurrentUser
+from swagger.v3.oas.annotations import Hidden
 
+from ..entities import User
 from ..mappers import Projections
 from ..paging import page_request
 from ..services.items import ItemService
@@ -38,7 +38,6 @@ APP_VIEW = "App"
 
 users: Annotated[UserService, Inject]
 items: Annotated[ItemService, Inject]
-current: Annotated[CurrentUser, Inject]
 projections: Annotated[Projections, Inject]
 
 
@@ -84,17 +83,16 @@ def reset_password_page(token: Annotated[str, QueryValue(defaultValue="")] = "")
 @Get("/")
 @View(APP_VIEW)
 @Secured(SecurityRule.IS_AUTHENTICATED)
-def dashboard_page(authentication: Authentication) -> dict:
+def dashboard_page(user: Annotated[User, Hidden]) -> dict:
     """The dashboard."""
-    return _model("dashboard", user=projections.user_public(current.of(authentication)))
+    return _model("dashboard", user=projections.user_public(user))
 
 
 @Get("/items")
 @View(APP_VIEW)
 @Secured(SecurityRule.IS_AUTHENTICATED)
-def items_page(authentication: Authentication) -> dict:
+def items_page(user: Annotated[User, Hidden]) -> dict:
     """The item list, server-rendered with its first page already filled in."""
-    user = current.of(authentication)
     result = items.list_for(user, page_request())
     return _model(
         "items",
@@ -107,28 +105,28 @@ def items_page(authentication: Authentication) -> dict:
 @Get("/settings")
 @View(APP_VIEW)
 @Secured(SecurityRule.IS_AUTHENTICATED)
-def settings_page(authentication: Authentication) -> dict:
+def settings_page(user: Annotated[User, Hidden]) -> dict:
     """The account settings screen."""
-    return _model("settings", user=projections.user_public(current.of(authentication)))
+    return _model("settings", user=projections.user_public(user))
 
 
 @Get("/forbidden")
 @View(APP_VIEW)
 @Secured(SecurityRule.IS_AUTHENTICATED)
-def forbidden_page(authentication: Authentication) -> dict:
+def forbidden_page(user: Annotated[User, Hidden]) -> dict:
     """Where a signed-in user lands after asking for a page they may not see."""
-    return _model("forbidden", user=projections.user_public(current.of(authentication)))
+    return _model("forbidden", user=projections.user_public(user))
 
 
 @Get("/admin")
 @View(APP_VIEW)
 @Secured(["ROLE_SUPERUSER"])
-def admin_page(authentication: Authentication) -> dict:
+def admin_page(user: Annotated[User, Hidden]) -> dict:
     """The user administration screen. Superuser only."""
     result = users.page(page_request())
     return _model(
         "admin",
-        user=projections.user_public(current.of(authentication)),
+        user=projections.user_public(user),
         users=[projections.user_public(user) for user in result.getContent()],
         count=result.getTotalSize(),
     )
