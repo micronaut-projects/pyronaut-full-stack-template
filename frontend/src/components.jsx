@@ -2,6 +2,11 @@ import React from 'react';
 import { Link } from 'react-router';
 
 export function Field({ id, label, type = 'text', value, onChange, error, ...rest }) {
+  // Controlled only when the caller manages the value. A form that posts
+  // natively does not, and leaves the value to the browser.
+  const controlled = onChange
+    ? { value: value ?? '', onChange: (event) => onChange(event.target.value) }
+    : {};
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
@@ -9,9 +14,8 @@ export function Field({ id, label, type = 'text', value, onChange, error, ...res
         id={id}
         data-testid={`${id}-input`}
         type={type}
-        value={value ?? ''}
-        onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? 'true' : undefined}
+        {...controlled}
         {...rest}
       />
       {error ? <p className="field-error">{error}</p> : null}

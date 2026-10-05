@@ -54,16 +54,14 @@ function Shell({ user, children }) {
 
 // ---------------------------------------------------------------- auth ----
 function Login({ initial }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
   // A native form post, not a fetch(). Micronaut Security answers it with a
   // redirect: to the dashboard with the session cookie set, or back here with
   // `?error=true`, which the server renders into `initial.error`. The browser
   // follows it as a real navigation, so the server renders the shell and the
   // initial model for whoever is now signed in — and the form works before the
-  // hydration bundle has loaded. The field names are the ones the login
-  // endpoint binds.
+  // hydration bundle has loaded. The fields hold no React state for the same
+  // reason: only the browser's submission reads them. Their names are the ones
+  // the login endpoint binds.
   return (
     <AuthCard
       title="Log in"
@@ -76,24 +74,8 @@ function Login({ initial }) {
     >
       <form method="post" action="/api/v1/login">
         <Alert kind="error">{initial?.error ? 'Incorrect email or password' : null}</Alert>
-        <Field
-          id="email"
-          name="username"
-          label="Email"
-          type="email"
-          value={email}
-          onChange={setEmail}
-          required
-        />
-        <Field
-          id="password"
-          name="password"
-          label="Password"
-          type="password"
-          value={password}
-          onChange={setPassword}
-          required
-        />
+        <Field id="email" name="username" label="Email" type="email" required />
+        <Field id="password" name="password" label="Password" type="password" required />
         <button className="button" type="submit" data-testid="login-submit">
           Log In
         </button>

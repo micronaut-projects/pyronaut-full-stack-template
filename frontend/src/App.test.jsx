@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 
@@ -13,6 +13,14 @@ describe('shared components', () => {
     render(<Field id="email" label="Email" value="a@example.com" onChange={() => {}} />);
     expect(screen.getByLabelText('Email')).toBeDefined();
     expect(screen.getByTestId('email-input').value).toBe('a@example.com');
+  });
+
+  it('leaves the value to the browser when the caller does not manage it', () => {
+    render(<Field id="email" name="username" label="Email" />);
+    const input = screen.getByTestId('email-input');
+    fireEvent.change(input, { target: { value: 'a@example.com' } });
+    expect(input.value).toBe('a@example.com');
+    expect(input.getAttribute('name')).toBe('username');
   });
 
   it('marks a field invalid when it carries an error', () => {
