@@ -112,6 +112,14 @@ def settings_page(authentication: Authentication) -> dict:
     return _model("settings", user=projections.user_public(current.of(authentication)))
 
 
+@Get("/forbidden")
+@View(APP_VIEW)
+@Secured(SecurityRule.IS_AUTHENTICATED)
+def forbidden_page(authentication: Authentication) -> dict:
+    """Where a signed-in user lands after asking for a page they may not see."""
+    return _model("forbidden", user=projections.user_public(current.of(authentication)))
+
+
 @Get("/admin")
 @View(APP_VIEW)
 @Secured(["ROLE_SUPERUSER"])

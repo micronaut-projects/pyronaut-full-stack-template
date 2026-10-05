@@ -195,16 +195,19 @@ Sign in as the superuser that was seeded during startup. That is `APP_FIRST_SUPE
 `APP_FIRST_SUPERUSER_PASSWORD` from your `.env` — `admin@example.com` / `changethis` if you have
 not changed them yet. Signing in sets a JWT in an `HttpOnly` cookie and lands on the dashboard.
 
-Only the browser is redirected. `PageRedirectAuthorizationHandler` keys off `Accept: text/html`, so
-`/api/v1/**` still answers an unauthenticated caller with 401 rather than sending a `fetch` to a
-login page it would read as success.
+The login form is a plain form post. Micronaut Security answers it with a redirect: to the dashboard
+when the credentials are right, back to the login page with an error when they are not.
+
+Only a request that accepts `text/html` is redirected to the login page, so `/api/v1/**` still
+answers an unauthenticated `fetch` with 401 rather than sending it to a login page it would read as
+success.
 
 | Page | |
 | --- | --- |
 | [`/`](http://localhost:8080/) | The dashboard. Signed in only |
 | [`/items`](http://localhost:8080/items) | The item list, server-rendered with its first page already filled in |
 | [`/settings`](http://localhost:8080/settings) | Account settings |
-| [`/admin`](http://localhost:8080/admin) | User administration. Superusers only — a signed-in ordinary user gets a 403 |
+| [`/admin`](http://localhost:8080/admin) | User administration. Superusers only — a signed-in ordinary user is sent to a page saying so |
 | [`/signup`](http://localhost:8080/signup) | Registration, for a user of your own |
 | [`/recover-password`](http://localhost:8080/recover-password) | Sends a reset mail, which is where Mailpit below comes in |
 

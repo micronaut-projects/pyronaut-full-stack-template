@@ -52,6 +52,17 @@ export function AuthCard({ title, children, footer }) {
   );
 }
 
+export function Forbidden() {
+  return (
+    <Page title="Forbidden">
+      <p>You do not have permission to see this page.</p>
+      <Link className="button" to="/">
+        Back to the dashboard
+      </Link>
+    </Page>
+  );
+}
+
 export function NotFound({ message = 'Page not found' }) {
   return (
     <Page title="Not found">

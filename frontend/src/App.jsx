@@ -16,7 +16,7 @@ import {
 } from 'react-router';
 
 import { api } from './api';
-import { Alert, AuthCard, Field, NotFound, Page } from './components';
+import { Alert, AuthCard, Field, Forbidden, NotFound, Page } from './components';
 
 function Shell({ user, children }) {
   return (
@@ -56,27 +56,14 @@ function Shell({ user, children }) {
 function Login({ initial }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(initial?.error ? 'Incorrect email or password' : null);
-  const [busy, setBusy] = useState(false);
 
-  async function submit(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await api.login(email, password);
-      // A real navigation, not a client-side one. Signing in changes who the
-      // session belongs to, and the server renders the shell and the initial
-      // model for the authenticated user. Routing client-side would leave the
-      // app showing signed-out chrome until something else refreshed it.
-      window.location.assign('/');
-    } catch (failure) {
-      setError(failure.status === 401 ? 'Incorrect email or password' : failure.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  // A native form post, not a fetch(). Micronaut Security answers it with a
+  // redirect: to the dashboard with the session cookie set, or back here with
+  // `?error=true`, which the server renders into `initial.error`. The browser
+  // follows it as a real navigation, so the server renders the shell and the
+  // initial model for whoever is now signed in — and the form works before the
+  // hydration bundle has loaded. The field names are the ones the login
+  // endpoint binds.
   return (
     <AuthCard
       title="Log in"
@@ -87,19 +74,28 @@ function Login({ initial }) {
         </>
       }
     >
-      <form onSubmit={submit}>
-        <Alert kind="error">{error}</Alert>
-        <Field id="email" label="Email" type="email" value={email} onChange={setEmail} required />
+      <form method="post" action="/api/v1/login">
+        <Alert kind="error">{initial?.error ? 'Incorrect email or password' : null}</Alert>
+        <Field
+          id="email"
+          name="username"
+          label="Email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          required
+        />
         <Field
           id="password"
+          name="password"
           label="Password"
           type="password"
           value={password}
           onChange={setPassword}
           required
         />
-        <button className="button" type="submit" disabled={busy} data-testid="login-submit">
-          {busy ? 'Logging in…' : 'Log In'}
+        <button className="button" type="submit" data-testid="login-submit">
+          Log In
         </button>
       </form>
     </AuthCard>
@@ -118,8 +114,8 @@ function Signup() {
     setErrors({});
     try {
       await api.signup(form);
-      await api.login(form.email, form.password);
-      window.location.assign('/');
+      // Signing in is a form post on the login page, so send the new user there.
+      window.location.assign('/login');
     } catch (failure) {
       setError(failure.message);
       setErrors(failure.errors);
@@ -466,6 +462,7 @@ export function App(props) {
           <Route path="/items" element={<Items initial={on('items')} />} />
           <Route path="/settings" element={<Settings initial={on('settings')} />} />
           <Route path="/admin" element={<Admin initial={on('admin')} />} />
+          <Route path="/forbidden" element={<Forbidden />} />
           <Route path="*" element={<NotFound message={data?.message} />} />
         </Routes>
       </Shell>

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from conftest import SUPERUSER_EMAIL
+from conftest import LOGIN_SUCCESS, SUPERUSER_EMAIL, sign_in
 
 
 def test_signup_creates_an_active_non_superuser(client, unique_email):
@@ -51,10 +51,7 @@ def test_a_new_user_can_sign_in(client, unique_email):
     client.post(
         "/api/v1/users/signup", json={"email": email, "password": "a-good-password"}
     )
-    response = client.post(
-        "/api/v1/login", json={"username": email, "password": "a-good-password"}
-    )
-    assert response.status_code == 200, response.text
+    assert sign_in(client, email, "a-good-password") == LOGIN_SUCCESS
 
 
 def test_read_me_returns_the_signed_in_user(superuser_client):
@@ -86,8 +83,30 @@ def test_listing_users_requires_superuser(client, unique_email):
     client.post(
         "/api/v1/users/signup", json={"email": email, "password": "a-good-password"}
     )
-    client.post("/api/v1/login", json={"username": email, "password": "a-good-password"})
+    assert sign_in(client, email, "a-good-password") == LOGIN_SUCCESS
     assert client.get("/api/v1/users").status_code == 403
+
+
+def test_the_admin_page_sends_a_plain_user_to_the_forbidden_page(client, unique_email):
+    """A signed-in browser that is not allowed is told so.
+
+    A signed-out one is sent to the login page; this one is already past it.
+    """
+    email = unique_email("plain")
+    client.post(
+        "/api/v1/users/signup", json={"email": email, "password": "a-good-password"}
+    )
+    assert sign_in(client, email, "a-good-password") == LOGIN_SUCCESS
+    # What a browser sends when navigating. `text/html` alone would not do: the
+    # page routes do not declare that they produce it, so it would match no route.
+    browser = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}
+    response = client.get("/admin", headers=browser, allow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers.get("Location") == "/forbidden"
+
+    page = client.get("/forbidden", headers=browser, allow_redirects=False)
+    assert page.status_code == 200, page.text
+    assert "You do not have permission to see this page." in page.text
 
 
 def test_superuser_can_list_users(superuser_client):

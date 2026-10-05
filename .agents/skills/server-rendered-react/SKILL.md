@@ -80,11 +80,10 @@ A screen that renders only from `initial` works on first load and is blank forev
 
 Who is signed in is a property of the session, not of the rendered screen. Hold it once, above the routes, seeded from the server model and confirmed against the API in the browser.
 
-Identity changes belong to the server: after signing in, do a **real** navigation rather than a client-side one.
+Identity changes belong to the server: sign in with a **real** navigation rather than a client-side one. A native form post does that by itself — the login endpoint answers with a redirect and the browser follows it.
 
-```js
-await api.login(email, password);
-window.location.assign('/');
+```jsx
+<form method="post" action="/api/v1/login">
 ```
 
 The server then renders the authenticated shell and the initial model. Routing client-side across an identity change means rebuilding on the client what the server already knows, and is the direct cause of the third and fourth failures listed above.

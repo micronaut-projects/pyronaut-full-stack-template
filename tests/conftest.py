@@ -31,6 +31,11 @@ from pyronaut.test import MicronautTest, micronaut_test_fixture
 SUPERUSER_EMAIL = "admin@example.com"
 SUPERUSER_PASSWORD = "testpassword123"
 
+# Where Micronaut Security sends the browser after a login attempt; see
+# [micronaut.security.redirect] in config/application.toml.
+LOGIN_SUCCESS = "/"
+LOGIN_FAILURE = "/login?error=true"
+
 MAILPIT_IMAGE = "axllent/mailpit"
 MAILPIT_SMTP_PORT = 1025
 MAILPIT_HTTP_PORT = 8025
@@ -83,6 +88,22 @@ def client(application_context):
     return requests.with_context(application_context)
 
 
+def sign_in(client, email, password):
+    """Post the login form the way a browser does, and return where it redirects to.
+
+    The login endpoint answers 303 whether or not the credentials were right, so
+    the redirect is not followed: its `Location` is the answer. Following it would
+    end on a rendered page and a 200 either way.
+    """
+    response = client.post(
+        "/api/v1/login",
+        data={"username": email, "password": password},
+        allow_redirects=False,
+    )
+    assert response.status_code == 303, response.text
+    return response.headers.get("Location")
+
+
 @pytest.fixture
 def superuser_client(client):
     """A client that has signed in as the bootstrapped superuser.
@@ -90,11 +111,7 @@ def superuser_client(client):
     Authentication rides an HttpOnly cookie, so the session persists on the
     client itself and no token has to be threaded through each call.
     """
-    response = client.post(
-        "/api/v1/login",
-        json={"username": SUPERUSER_EMAIL, "password": SUPERUSER_PASSWORD},
-    )
-    assert response.status_code == 200, response.text
+    assert sign_in(client, SUPERUSER_EMAIL, SUPERUSER_PASSWORD) == LOGIN_SUCCESS
     return client
 
 
