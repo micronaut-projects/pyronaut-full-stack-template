@@ -18,15 +18,6 @@ url = 'http://localhost:8025'
 #
 # Measured working: `npm run watch` in one terminal, `pyronaut dev` in another, and an
 # edit to a React component is serving new markup within 10s with no restart.
-#
-# It needs micronaut-views-react 6.2.1, which is not out yet. On the released 6.2.0 the
-# watch thread dies at startup -- an uncaught NullPointerException in
-# `ReactJSSources.onApplicationEvent`, because a `file:` bundle reaches a code path that
-# assumes a classpath `Source` -- so nothing is watched and, with `restart-excludes` also
-# suppressing the restart, a bundle change does nothing at all until you restart by hand.
-# The fix is micronaut-views#1203. Until it ships, either restart manually after
-# `npm run build`, or drop `restart-excludes` from pyproject.toml to get the (7.1s)
-# full restart back.
 [micronaut.views.react]
 server-bundle-path = 'file:views/ssr-components.mjs'
 
@@ -37,7 +28,7 @@ paths = ['views']
 # Refresh the browser when the bundle is rebuilt, closing the last of the gap to
 # Vite-style development: `npm run watch` in one terminal, `pyronaut dev` in another,
 # and an edit to a React component is on screen without touching the browser.
-# Does nothing until the micronaut-views-react-dev dependency is uncommented in
-# pyproject.toml, which waits on micronaut-views 6.2.1 (micronaut-views#1204).
+# Provided by micronaut-views-react-dev, a development-runtime dependency in
+# pyproject.toml, available since micronaut-views 6.3.0 (micronaut-views#1204).
 [micronaut.views.react.dev]
 enabled = true
