@@ -14,8 +14,10 @@ parameter as a query parameter carrying the whole entity.
 
 Both are Python implementations of Micronaut's own extension points: a filter is
 a bean with a ``@RequestFilter`` method, and a binder implements
-``TypedRequestArgumentBinder``. Both are pooled, because they run on every
-request and a singleton would put all of them through one GraalPy context.
+``TypedRequestArgumentBinder``. Both are singletons, and have to be: a
+``@ContextPooled`` class is generated without the Java interfaces it declares,
+so a pooled binder is not recognised as one. The cost is that they run in the
+one GraalPy context a singleton lives in, on every request.
 """
 
 from uuid import UUID

@@ -10,9 +10,9 @@ Login and logout themselves are not here. Micronaut Security provides them at
 the authentication itself lives in `app/security/provider.py`.
 
 That is the one deliberate departure from the upstream template, which exposes
-`POST /login/access-token` taking an OAuth2 `x-www-form-urlencoded` form. That
-form encoding is a FastAPI-ism inherited from its Swagger UI integration, and
-the TypeScript client is generated from OpenAPI either way, so nothing needs it.
+`POST /login/access-token` taking an OAuth2 form and answering with a bearer
+token. Here the login page posts an ordinary form to `/api/v1/login`, and
+Micronaut Security answers with a redirect and the session cookie.
 """
 
 from typing import Annotated
