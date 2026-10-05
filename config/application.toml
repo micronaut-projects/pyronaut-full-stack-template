@@ -59,6 +59,13 @@ paths = ['file:static']
 pattern = '/static/**'
 access = ['isAnonymous()']
 
+# Skip reading and verifying the JWT cookie for those anonymous static assets:
+# the answer cannot depend on who is asking. It only applies to a GET or HEAD
+# that matches no route, resolves to a static resource and is granted
+# `isAnonymous()` by the entry above, which is still required.
+[micronaut.security.filter]
+static-resource-authentication-bypass = true
+
 # ---------------------------------------------------------------------------
 # Security. JWT in an HttpOnly cookie so that server-side rendering can read
 # the authenticated user from the request.
