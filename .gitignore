@@ -22,3 +22,4 @@ openapi.yaml
 .idea/
 .vscode/
 .DS_Store
+*.iml

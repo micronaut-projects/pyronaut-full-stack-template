@@ -7,7 +7,7 @@ message back out of Mailpit's API.
 """
 
 import pytest
-from conftest import SUPERUSER_EMAIL
+from conftest import LOGIN_FAILURE, LOGIN_SUCCESS, SUPERUSER_EMAIL, sign_in
 
 MAILPIT_CLIENT = "io.micronaut.email.mailpit.client.MailpitClient"
 
@@ -67,18 +67,8 @@ def test_the_recovery_token_in_the_email_actually_works(client, mailpit_client):
     assert reset.status_code == 200, reset.text
 
     # The new password works and the old one does not.
-    assert (
-        client.post(
-            "/api/v1/login", json={"username": email, "password": new_password}
-        ).status_code
-        == 200
-    )
-    assert (
-        client.post(
-            "/api/v1/login", json={"username": email, "password": original}
-        ).status_code
-        == 401
-    )
+    assert sign_in(client, email, new_password) == LOGIN_SUCCESS
+    assert sign_in(client, email, original) == LOGIN_FAILURE
 
 
 def test_test_email_requires_superuser(client):

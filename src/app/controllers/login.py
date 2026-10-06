@@ -10,23 +10,23 @@ Login and logout themselves are not here. Micronaut Security provides them at
 the authentication itself lives in `app/security/provider.py`.
 
 That is the one deliberate departure from the upstream template, which exposes
-`POST /login/access-token` taking an OAuth2 `x-www-form-urlencoded` form. That
-form encoding is a FastAPI-ism inherited from its Swagger UI integration, and
-the TypeScript client is generated from OpenAPI either way, so nothing needs it.
+`POST /login/access-token` taking an OAuth2 form and answering with a bearer
+token. Here the login page posts an ordinary form to `/api/v1/login`, and
+Micronaut Security answers with a redirect and the session cookie.
 """
 
 from typing import Annotated
-from uuid import UUID
 
 from jakarta.inject import Inject
 from jakarta.validation import Valid
 from micronaut.http import HttpResponse
 from micronaut.http.annotation import Body, Controller, Get, Post
 from micronaut.security.annotation import Secured
-from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
+from swagger.v3.oas.annotations import Hidden
 
 from ..dto import Message, NewPassword, UserPublic
+from ..entities import User
 from ..mappers import Projections
 from ..security.tokens import PasswordResetTokens
 from ..services.mail import MailService
@@ -42,9 +42,9 @@ projections: Annotated[Projections, Inject]
 
 @Get("/login/test-token")
 @Secured(SecurityRule.IS_AUTHENTICATED)
-def test_token(authentication: Authentication) -> UserPublic:
+def test_token(user: Annotated[User, Hidden]) -> UserPublic:
     """Verify an access token and return the user it belongs to."""
-    return projections.user_public(users.by_id(UUID(str(authentication.getName()))))
+    return projections.user_public(user)
 
 
 @Post("/password-recovery/{email}")

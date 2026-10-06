@@ -116,6 +116,20 @@ def test_sign_in_reaches_the_dashboard():
 
 
 @Test
+def test_logging_out_returns_to_the_login_page():
+    page = _new_page()
+    try:
+        _sign_in(page)
+        page.click("[data-testid='logout-button']")
+        page.waitForURL(f"{_base_url()}/login")
+        # The session is gone, not just the page: the dashboard bounces back.
+        page.navigate(f"{_base_url()}/")
+        assert page.url().rstrip("/").endswith("/login"), f"url={page.url()}"
+    finally:
+        page.close()
+
+
+@Test
 def test_an_unknown_password_keeps_you_on_the_login_page():
     page = _new_page()
     try:
@@ -151,10 +165,10 @@ def test_the_hydration_bundle_is_served():
 def test_the_dashboard_sends_a_signed_out_browser_to_the_login_page():
     """A person gets the login page; an API client still gets 401.
 
-    Both halves matter. The redirect comes from `PageRedirectAuthorizationHandler`,
-    which keys off `Accept: text/html` precisely so that it cannot reach the API —
-    and the API answering 303 instead of 401 is what the hydrated client would
-    silently mistake for a successful call.
+    Both halves matter. The redirect is `micronaut.security.redirect.unauthorized`,
+    which only applies to a request that accepts `text/html`, so it cannot reach
+    the API — and the API answering 303 instead of 401 is what the hydrated client
+    would silently mistake for a successful call.
     """
     page = _new_page()
     try:

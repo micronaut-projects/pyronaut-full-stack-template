@@ -101,7 +101,7 @@ Email workspace and no build step producing Jinja. Node is a bundler, absent fro
 
 ### Two languages, one container, no binding layer
 
-Two of this application's components are written in Java, in `src-java/`, and Python code can invoke it with a simple import:
+A few of this application's components are written in Java, in `src-java/`, and Python code can invoke them with a simple import:
 
 ```python
 from fullstack.security import PasswordHasher   # a Java class
@@ -111,16 +111,27 @@ class UserService:
     def __init__(self, users: UserRepository, passwords: PasswordHasher):
 ```
 
-It goes the other way too. `CurrentUser` is Java and injects `UserService`, a Python class, taking
-the Python entity back as a return value:
+It goes the other way too. `SignedInUserBinder` is Java and injects `UserRepository`, a Python
+`Protocol`, taking the Python entity back as a return value:
 
 ```java
-public CurrentUser(UserService users) { this.users = users; }
+public SignedInUserBinder(UserRepository users) { this.users = users; }
 
-public @Nullable User of(Authentication authentication) {
-    return users.by_id(UUID.fromString(authentication.getName()));
+private Optional<User> find(Authentication authentication) {
+    return users.findById(UUID.fromString(authentication.getName()));
 }
 ```
+
+That binder hands the signed-in user to any route that asks for one, looking it up once per
+request for exactly those routes:
+
+```python
+@Get("/me")
+def read_me(user: Annotated[User, Hidden]) -> UserPublic:
+    return projections.user_public(user)
+```
+
+`Hidden` keeps the parameter out of the OpenAPI document; it comes from the session, not the caller.
 
 Pyronaut generates a Java class for each Python type, so this is ordinary compilation: rename the
 Python method and the Java stops compiling. One container, one configuration, one `pyronaut test`.
@@ -195,16 +206,19 @@ Sign in as the superuser that was seeded during startup. That is `APP_FIRST_SUPE
 `APP_FIRST_SUPERUSER_PASSWORD` from your `.env` — `admin@example.com` / `changethis` if you have
 not changed them yet. Signing in sets a JWT in an `HttpOnly` cookie and lands on the dashboard.
 
-Only the browser is redirected. `PageRedirectAuthorizationHandler` keys off `Accept: text/html`, so
-`/api/v1/**` still answers an unauthenticated caller with 401 rather than sending a `fetch` to a
-login page it would read as success.
+The login form is a plain form post. Micronaut Security answers it with a redirect: to the dashboard
+when the credentials are right, back to the login page with an error when they are not.
+
+Only a request that accepts `text/html` is redirected to the login page, so `/api/v1/**` still
+answers an unauthenticated `fetch` with 401 rather than sending it to a login page it would read as
+success.
 
 | Page | |
 | --- | --- |
 | [`/`](http://localhost:8080/) | The dashboard. Signed in only |
 | [`/items`](http://localhost:8080/items) | The item list, server-rendered with its first page already filled in |
 | [`/settings`](http://localhost:8080/settings) | Account settings |
-| [`/admin`](http://localhost:8080/admin) | User administration. Superusers only — a signed-in ordinary user gets a 403 |
+| [`/admin`](http://localhost:8080/admin) | User administration. Superusers only — a signed-in ordinary user is sent to a page saying so |
 | [`/signup`](http://localhost:8080/signup) | Registration, for a user of your own |
 | [`/recover-password`](http://localhost:8080/recover-password) | Sends a reset mail, which is where Mailpit below comes in |
 

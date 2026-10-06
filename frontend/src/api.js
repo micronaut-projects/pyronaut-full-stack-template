@@ -22,11 +22,6 @@ export async function request(url, options = {}) {
 }
 
 export const api = {
-  login: (email, password) =>
-    request('/api/v1/login', {
-      method: 'POST',
-      body: JSON.stringify({ username: email, password }),
-    }),
   signup: (payload) =>
     request('/api/v1/users/signup', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request('/api/v1/users/me'),

@@ -59,6 +59,13 @@ paths = ['file:static']
 pattern = '/static/**'
 access = ['isAnonymous()']
 
+# Skip reading and verifying the JWT cookie for those anonymous static assets:
+# the answer cannot depend on who is asking. It only applies to a GET or HEAD
+# that matches no route, resolves to a static resource and is granted
+# `isAnonymous()` by the entry above, which is still required.
+[micronaut.security.filter]
+static-resource-authentication-bypass = true
+
 # ---------------------------------------------------------------------------
 # Security. JWT in an HttpOnly cookie so that server-side rendering can read
 # the authenticated user from the request.
@@ -78,8 +85,14 @@ enabled = false
 secret = 'changethis-changethis-changethis-changethis'
 jws-algorithm = 'HS256'
 
+# Two hours, where the upstream template has eight days.
+#
+# A JWT is self-contained: validating one does not consult the database, so an
+# account that is deleted or deactivated keeps a working session until its token
+# expires. The lifetime is that window, and two hours is the trade between it and
+# how often a person has to sign in again.
 [micronaut.security.token.generator.access-token]
-expiration = 691200 # 8 days, matching the upstream template
+expiration = 7200
 
 [micronaut.security.token.cookie]
 enabled = true
@@ -96,18 +109,25 @@ enabled = true
 path = '/api/v1/logout'
 get-allowed = false
 
-# No redirects on login.
+# Login, logout and a signed-out page request all answer with a redirect, which is
+# what a browser wants: the login form is a native form post, not a fetch().
 #
-# With redirects on, Micronaut Security answers a failed login with 303 to
-# `/login?error=true`, and any client that follows redirects — including the
-# test client and fetch() — sees the rendered login page and a 200, making a
-# failed login indistinguishable from a successful one. Off, /api/v1/login
-# answers 200 with the session cookie, or 401. The browser decides where to
-# navigate next.
+# /api/v1/login answers 303 either way -- to `/` with the session cookie, or to
+# `/login?error=true`, which the login page renders as the error message.
 [micronaut.security.redirect]
-enabled = false
-# Still required by configuration validation even when redirects are off.
+login-success = '/'
+login-failure = '/login?error=true'
 logout = '/login'
+
+# A signed-out request for a page goes to the login page. Only a request that
+# accepts text/html is redirected, so /api/v1/** still answers a fetch() with 401.
+[micronaut.security.redirect.unauthorized]
+url = '/login'
+
+# A signed-in user who is merely not allowed -- a non-superuser opening /admin --
+# goes to a page that says so. The API still answers 403.
+[micronaut.security.redirect.forbidden]
+url = '/forbidden'
 
 # ---------------------------------------------------------------------------
 # Persistence. In development and test the URL, username and password are

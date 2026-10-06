@@ -1,23 +1,22 @@
 """Authentication and password recovery."""
 
-from conftest import SUPERUSER_EMAIL, SUPERUSER_PASSWORD
+from conftest import (
+    LOGIN_FAILURE,
+    LOGIN_SUCCESS,
+    SUPERUSER_EMAIL,
+    SUPERUSER_PASSWORD,
+    sign_in,
+)
 
 
 def test_superuser_is_created_on_startup(client):
     """The bootstrap listener seeds the first superuser, so login works cold."""
-    response = client.post(
-        "/api/v1/login",
-        json={"username": SUPERUSER_EMAIL, "password": SUPERUSER_PASSWORD},
-    )
-    assert response.status_code == 200, response.text
+    assert sign_in(client, SUPERUSER_EMAIL, SUPERUSER_PASSWORD) == LOGIN_SUCCESS
 
 
 def test_login_rejects_a_wrong_password(client):
-    response = client.post(
-        "/api/v1/login",
-        json={"username": SUPERUSER_EMAIL, "password": "not-the-password"},
-    )
-    assert response.status_code == 401
+    assert sign_in(client, SUPERUSER_EMAIL, "not-the-password") == LOGIN_FAILURE
+    assert client.get("/api/v1/users/me").status_code == 401
 
 
 def test_login_does_not_distinguish_unknown_users(client):
@@ -25,15 +24,9 @@ def test_login_does_not_distinguish_unknown_users(client):
 
     Anything else turns the login endpoint into an account-enumeration oracle.
     """
-    unknown = client.post(
-        "/api/v1/login",
-        json={"username": "nobody@example.com", "password": "whatever-123"},
-    )
-    wrong_password = client.post(
-        "/api/v1/login",
-        json={"username": SUPERUSER_EMAIL, "password": "whatever-123"},
-    )
-    assert unknown.status_code == wrong_password.status_code == 401
+    unknown = sign_in(client, "nobody@example.com", "whatever-123")
+    wrong_password = sign_in(client, SUPERUSER_EMAIL, "whatever-123")
+    assert unknown == wrong_password == LOGIN_FAILURE
 
 
 def test_authenticated_routes_require_a_session(client):
