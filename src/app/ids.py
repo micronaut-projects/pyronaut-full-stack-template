@@ -12,19 +12,27 @@ So ``str(a.id) == str(b.id)`` is only right when both sides happen to share a
 shape, and wrong without complaint when they do not: the owner of an item was
 refused it, and the check that stops a superuser deleting their own account
 passed. Compare ids with ``same_id`` instead.
+
+This is a workaround; micronaut-projects/pyronaut#311 tracks the cause.
 """
 
 import re
 
-_UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", re.IGNORECASE)
+_UUID = re.compile(r"^(?:UUID\(')?([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})(?:'\))?$", re.IGNORECASE)
 
 
-def _text(value) -> str | None:
-    match = _UUID.search(str(value))
-    return match.group(0).lower() if match else None
+def _text(value) -> str:
+    """The bare, lower-case text of a UUID in either shape.
+
+    Raises for anything else, so that comparing the wrong thing — an entity
+    rather than its id, say — fails in a test instead of answering False.
+    """
+    match = _UUID.match(str(value))
+    if match is None:
+        raise TypeError(f"not a UUID: {value!r}")
+    return match.group(1).lower()
 
 
 def same_id(a, b) -> bool:
     """Whether two ids are the same UUID, whichever shape each arrived in."""
-    left = _text(a)
-    return left is not None and left == _text(b)
+    return _text(a) == _text(b)
