@@ -75,7 +75,17 @@ function Login({ initial }) {
       <form method="post" action="/api/v1/login">
         <Alert kind="error">{initial?.error ? 'Incorrect email or password' : null}</Alert>
         <Field id="email" name="username" label="Email" type="email" required />
-        <Field id="password" name="password" label="Password" type="password" required />
+        {/* The pattern is "not blank": a whitespace-only password is refused here
+            rather than by the endpoint's validation, whose 422 the browser would
+            show raw. JSX attribute strings take no escapes, so one backslash. */}
+        <Field
+          id="password"
+          name="password"
+          label="Password"
+          type="password"
+          pattern=".*\S.*"
+          required
+        />
         <button className="button" type="submit" data-testid="login-submit">
           Log In
         </button>
