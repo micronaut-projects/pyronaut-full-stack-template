@@ -85,8 +85,14 @@ enabled = false
 secret = 'changethis-changethis-changethis-changethis'
 jws-algorithm = 'HS256'
 
+# Two hours, where the upstream template has eight days.
+#
+# A JWT is self-contained: validating one does not consult the database, so an
+# account that is deleted or deactivated keeps a working session until its token
+# expires. The lifetime is that window, and two hours is the trade between it and
+# how often a person has to sign in again.
 [micronaut.security.token.generator.access-token]
-expiration = 691200 # 8 days, matching the upstream template
+expiration = 7200
 
 [micronaut.security.token.cookie]
 enabled = true
