@@ -104,20 +104,23 @@ class UserService:
 
 ```java
 // Java injecting a Python bean, through the class Pyronaut generates for it
-public Greeter(UserService users) { this.users = users; }
+public SignedInUserBinder(UserRepository users) { this.users = users; }
+
+private Optional<User> find(Authentication authentication) {
+    return users.findById(UUID.fromString(authentication.getName()));
+}
 ```
 
-Micronaut's extension points can be implemented in Python too. `app/security/signed_in_user.py` has
-a `@ServerFilter` and a `TypedRequestArgumentBinder[User]`, which are what let a route take the
-signed-in user as a parameter. Two things to know when writing one:
+`SignedInUserBinder` is what lets a route take the signed-in user as a parameter.
+Declare it `user: Annotated[User, Hidden]`: without `Hidden`, Micronaut OpenAPI documents it as a
+required query parameter carrying the whole entity. A type alias for that annotation does not work —
+the processor does not resolve it, and the parameter becomes an unbindable `Object`.
 
-- **It has to be a singleton.** A `@ContextPooled` class is generated without the Java interfaces it
-  declares, so a pooled binder fails at startup with a `ClassCastException` and a pooled filter
-  loses `Ordered`.
-- **Declare the parameter `user: Annotated[User, Hidden]`.** Without `Hidden`, Micronaut OpenAPI
-  documents it as a required query parameter carrying the whole entity. A type alias for that
-  annotation does not work — the processor does not resolve it, and the parameter becomes an
-  unbindable `Object`.
+Micronaut's extension points can be implemented in Python as well — a `@ServerFilter` class, a
+`TypedRequestArgumentBinder[User]`, a `GenericJwtClaimsValidator` — but such a bean has to be a
+singleton: a `@ContextPooled` class is generated without the Java interfaces it declares, so a
+pooled binder fails at startup with a `ClassCastException`. A singleton runs in one GraalPy
+context, which for something that runs on every request is the reason the binder is Java.
 
 An entity bound as a route parameter arrives as the Python dataclass, with a `uuid.UUID` id. One a
 repository returned is still the Java object, and `str()` of its id is `UUID('...')`. Comparing the

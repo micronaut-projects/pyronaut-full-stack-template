@@ -77,11 +77,12 @@ def test_password_change_requires_the_current_password(superuser_client):
     assert response.json()["message"] == "Incorrect password"
 
 
-def test_a_session_outliving_its_account_is_signed_out(client, unique_email):
-    """The cookie still verifies after the account is gone; it must not be a session.
+def test_a_session_outliving_its_account_cannot_act_as_it(client, unique_email):
+    """The cookie still verifies after the account is gone.
 
-    The user is looked up on every request, so a token for nobody has to read as
-    401 rather than reach a route with no user to work with.
+    Validating a JWT does not touch the database, so the token stays valid until
+    it expires. A route that needs the user as an entity then has nothing to
+    bind, and answers 400 rather than failing with a 500 or acting on a `None`.
     """
     email = unique_email("gone")
     client.post(
@@ -90,8 +91,8 @@ def test_a_session_outliving_its_account_is_signed_out(client, unique_email):
     assert sign_in(client, email, "a-good-password") == LOGIN_SUCCESS
     assert client.delete("/api/v1/users/me").status_code == 200
 
-    assert client.get("/api/v1/users/me").status_code == 401
-    assert client.get("/api/v1/login/test-token").status_code == 401
+    assert client.get("/api/v1/users/me").status_code == 400
+    assert client.get("/api/v1/login/test-token").status_code == 400
 
 
 def test_a_plain_user_may_read_their_own_record_and_no_other(superuser_client, unique_email):
