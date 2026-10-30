@@ -56,7 +56,7 @@ and the lifecycle is `pyronaut test` / `pyronaut build`.
 ### The whole test suite is one command
 
 ```
-$ pyronaut test
+$ PYTEST_ADDOPTS=--capture=sys pyronaut test
 38 tests passed in 45.9s
 ```
 
@@ -232,11 +232,16 @@ real bug.
 ### Running the tests
 
 ```bash
-pyronaut test
+PYTEST_ADDOPTS=--capture=sys pyronaut test
 ```
 
 One command runs the pytest API suite and the JUnit Playwright suite in the same session, against
 the same embedded server, with MySQL and Mailpit supplied by containers.
+
+Until the embedded Pyronaut pytest runtime is fixed, set `PYTEST_ADDOPTS=--capture=sys` when
+running the suite. Pytest's default file-descriptor capture can raise `FileNotFoundError` in
+GraalPy; `sys` capture avoids that path while still capturing Python output. The runtime fix is
+tracked in [Pyronaut issue #400](https://github.com/micronaut-projects/pyronaut/issues/400).
 
 `pyronaut test` needs a GraalPy virtual environment with pytest in it:
 
