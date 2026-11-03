@@ -1,5 +1,7 @@
 """Item CRUD and ownership rules."""
 
+from conftest import LOGIN_SUCCESS, sign_in
+
 
 def _create_item(client, title="A thing", description="Made by a test"):
     response = client.post(
@@ -60,3 +62,33 @@ def test_a_blank_title_is_rejected_with_the_one_error_shape(superuser_client):
     body = response.json()
     assert body["message"] == "Validation failed"
     assert "title" in body["errors"]
+
+
+def test_a_plain_user_owns_their_items_and_nobody_elses(superuser_client, unique_email):
+    """Ownership, for a user who cannot fall back on being a superuser.
+
+    Every other test here signs in as the superuser, who may touch any item, so
+    none of them would notice the ownership check refusing the owner.
+    """
+    theirs = superuser_client.post("/api/v1/items", json={"title": "Not yours"}).json()
+
+    # The same client: signing in again replaces the superuser's session.
+    client = superuser_client
+    email = unique_email("owner")
+    client.post("/api/v1/users/signup", json={"email": email, "password": "a-good-password"})
+    assert sign_in(client, email, "a-good-password") == LOGIN_SUCCESS
+
+    mine = client.post("/api/v1/items", json={"title": "Mine"})
+    assert mine.status_code == 201, mine.text
+    item_id = mine.json()["id"]
+
+    assert client.get(f"/api/v1/items/{item_id}").status_code == 200
+    updated = client.put(f"/api/v1/items/{item_id}", json={"title": "Still mine"})
+    assert updated.status_code == 200, updated.text
+    assert [item["id"] for item in client.get("/api/v1/items").json()["data"]] == [item_id]
+
+    assert client.get(f"/api/v1/items/{theirs['id']}").status_code == 403
+    assert client.delete(f"/api/v1/items/{theirs['id']}").status_code == 403
+
+    assert client.delete(f"/api/v1/items/{item_id}").status_code == 200
+

@@ -68,6 +68,7 @@ const PAGES = [
   ['items', '/items', { user: { email: 'a@example.com' }, items: [], count: 0 }],
   ['settings', '/settings', { user: { email: 'a@example.com', fullName: 'Ada' } }],
   ['admin', '/admin', { user: { email: 'a@example.com', isSuperuser: true }, users: [] }],
+  ['forbidden', '/forbidden', { user: { email: 'a@example.com' } }],
 ];
 
 console.log('pages:');

@@ -18,9 +18,8 @@ from jakarta.validation import Valid
 from micronaut.http import HttpResponse, HttpStatus
 from micronaut.http.annotation import Body, Controller, Delete, Get, Patch, Post, QueryValue
 from micronaut.security.annotation import Secured
-from micronaut.security.authentication import Authentication
 from micronaut.security.rules import SecurityRule
-from fullstack.security import CurrentUser
+from swagger.v3.oas.annotations import Hidden
 
 from ..dto import (
     ApiError,
@@ -33,6 +32,8 @@ from ..dto import (
     UserUpdateMe,
     UsersPublic,
 )
+from ..entities import User
+from ..ids import same_id
 from ..mappers import Projections
 from ..paging import DEFAULT_PAGE_SIZE, page_request
 from ..security.provider import ROLE_SUPERUSER
@@ -44,7 +45,6 @@ Secured(SecurityRule.IS_AUTHENTICATED)
 
 users: Annotated[UserService, Inject]
 mail: Annotated[MailService, Inject]
-current: Annotated[CurrentUser, Inject]
 projections: Annotated[Projections, Inject]
 
 NOT_ALLOWED_SELF_DELETE = "Superusers are not allowed to delete themselves"
@@ -103,29 +103,28 @@ def create_user(body: Annotated[UserCreate, Body, Valid]) -> HttpResponse:
 
 # -- the authenticated user -------------------------------------------
 @Get("/me")
-def read_me(authentication: Authentication) -> UserPublic:
+def read_me(user: Annotated[User, Hidden]) -> UserPublic:
     """Return the currently authenticated user."""
-    return projections.user_public(current.of(authentication))
+    return projections.user_public(user)
 
 
 @Patch("/me")
 def update_me(
-    authentication: Authentication, body: Annotated[UserUpdateMe, Body, Valid]
+    user: Annotated[User, Hidden], body: Annotated[UserUpdateMe, Body, Valid]
 ) -> UserPublic:
     """Update the authenticated user's own name or email."""
-    return projections.user_public(users.update_me(current.of(authentication), body))
+    return projections.user_public(users.update_me(user, body))
 
 
 @Patch("/me/password")
 def update_my_password(
-    authentication: Authentication, body: Annotated[UpdatePassword, Body, Valid]
+    user: Annotated[User, Hidden], body: Annotated[UpdatePassword, Body, Valid]
 ) -> HttpResponse:
     """Change the authenticated user's password.
 
     Requires the current password. Returns 400 if it does not match, or if
     the new password is the same as the current one.
     """
-    user = current.of(authentication)
     if not users.verify_password(user, body.currentPassword):
         return HttpResponse.badRequest(Message(message="Incorrect password"))
     if body.currentPassword == body.newPassword:
@@ -137,13 +136,12 @@ def update_my_password(
 
 
 @Delete("/me")
-def delete_me(authentication: Authentication) -> HttpResponse:
+def delete_me(user: Annotated[User, Hidden]) -> HttpResponse:
     """Delete the authenticated user's own account.
 
     A superuser may not delete themselves; doing so could leave the system
     with no administrator.
     """
-    user = current.of(authentication)
     if user.isSuperuser:
         return HttpResponse.badRequest(Message(message=NOT_ALLOWED_SELF_DELETE))
     users.delete(user)
@@ -168,14 +166,13 @@ def signup(body: Annotated[UserRegister, Body, Valid]) -> HttpResponse:
 
 # -- by id --------------------------------------------------------------
 @Get("/{userId}")
-def read_user(userId: UUID, authentication: Authentication) -> HttpResponse:
+def read_user(userId: UUID, requester: Annotated[User, Hidden]) -> HttpResponse:
     """Fetch a user by id.
 
     A user may always read their own record; reading anyone else's requires
     superuser.
     """
-    requester = current.of(authentication)
-    if str(requester.id) != str(userId) and not requester.isSuperuser:
+    if not same_id(requester.id, userId) and not requester.isSuperuser:
         return HttpResponse.status(HttpStatus.FORBIDDEN).body(
             Message(message="The user doesn't have enough privileges")
         )
@@ -198,7 +195,7 @@ def update_user(userId: UUID, body: Annotated[UserUpdate, Body, Valid]) -> HttpR
 
 @Delete("/{userId}")
 @Secured([ROLE_SUPERUSER])
-def delete_user(userId: UUID, authentication: Authentication) -> HttpResponse:
+def delete_user(userId: UUID, requester: Annotated[User, Hidden]) -> HttpResponse:
     """Delete any user, and their items. Superuser only.
 
     A superuser may not delete their own account through this endpoint
@@ -207,7 +204,7 @@ def delete_user(userId: UUID, authentication: Authentication) -> HttpResponse:
     user = users.by_id(userId)
     if user is None:
         return HttpResponse.notFound()
-    if str(user.id) == str(current.of(authentication).id):
+    if same_id(user.id, requester.id):
         return HttpResponse.badRequest(Message(message=NOT_ALLOWED_SELF_DELETE))
     users.delete(user)
     return HttpResponse.ok(Message(message="User deleted successfully"))

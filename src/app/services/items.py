@@ -12,6 +12,7 @@ from micronaut.data.model import Page, Pageable
 
 from ..dto import ItemCreate, ItemPublic, ItemUpdate
 from ..entities import Item, User
+from ..ids import same_id
 from ..repositories import ItemRepository
 
 
@@ -42,7 +43,7 @@ class ItemService:
 
     @staticmethod
     def is_owned_by(item: Item, user: User) -> bool:
-        return item.owner is not None and str(item.owner.id) == str(user.id)
+        return item.owner is not None and same_id(item.owner.id, user.id)
 
     @staticmethod
     def may_access(item: Item, user: User) -> bool:

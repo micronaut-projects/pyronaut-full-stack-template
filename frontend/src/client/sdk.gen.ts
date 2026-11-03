@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { adminPageData, adminPageResponses, createItemData, createItemResponses, createUserData, createUserDirectlyData, createUserDirectlyResponses, createUserResponses, dashboardPageData, dashboardPageResponses, deleteItemData, deleteItemResponses, deleteMeData, deleteMeResponses, deleteUserData, deleteUserResponses, healthCheckData, healthCheckResponses, itemsPageData, itemsPageResponses, listItemsData, listItemsResponses, listUsersData, listUsersResponses, loginPageData, loginPageResponses, readItemData, readItemResponses, readMeData, readMeResponses, readUserData, readUserResponses, recoverPasswordData, recoverPasswordPageData, recoverPasswordPageResponses, recoverPasswordResponses, resetPasswordData, resetPasswordPageData, resetPasswordPageResponses, resetPasswordResponses, settingsPageData, settingsPageResponses, signupData, signupPageData, signupPageResponses, signupResponses, testEmailData, testEmailResponses, testTokenData, testTokenResponses, updateItemData, updateItemResponses, updateMeData, updateMeResponses, updateMyPasswordData, updateMyPasswordResponses, updateUserData, updateUserResponses } from './types.gen';
+import type { adminPageData, adminPageResponses, createItemData, createItemResponses, createUserData, createUserDirectlyData, createUserDirectlyResponses, createUserResponses, dashboardPageData, dashboardPageResponses, deleteItemData, deleteItemResponses, deleteMeData, deleteMeResponses, deleteUserData, deleteUserResponses, forbiddenPageData, forbiddenPageResponses, healthCheckData, healthCheckResponses, itemsPageData, itemsPageResponses, listItemsData, listItemsResponses, listUsersData, listUsersResponses, loginPageData, loginPageResponses, readItemData, readItemResponses, readMeData, readMeResponses, readUserData, readUserResponses, recoverPasswordData, recoverPasswordPageData, recoverPasswordPageResponses, recoverPasswordResponses, resetPasswordData, resetPasswordPageData, resetPasswordPageResponses, resetPasswordResponses, settingsPageData, settingsPageResponses, signupData, signupPageData, signupPageResponses, signupResponses, testEmailData, testEmailResponses, testTokenData, testTokenResponses, updateItemData, updateItemResponses, updateMeData, updateMeResponses, updateMyPasswordData, updateMyPasswordResponses, updateUserData, updateUserResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -248,6 +248,13 @@ export const testEmail = <ThrowOnError extends boolean = true>(options: Options<
         ...options.headers
     }
 });
+
+/**
+ * Where a signed-in user lands after asking for a page they may not see.
+ *
+ * Where a signed-in user lands after asking for a page they may not see.
+ */
+export const forbiddenPage = <ThrowOnError extends boolean = true>(options?: Options<forbiddenPageData, ThrowOnError>): RequestResult<forbiddenPageResponses, unknown, ThrowOnError> => (options?.client ?? client).get<forbiddenPageResponses, unknown, ThrowOnError>({ url: '/forbidden', ...options });
 
 /**
  * The item list, server-rendered with its first page already filled in.

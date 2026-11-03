@@ -506,6 +506,26 @@ export type testEmailResponses = {
 
 export type testEmailResponse = testEmailResponses[keyof testEmailResponses];
 
+export type forbiddenPageData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/forbidden';
+};
+
+export type forbiddenPageResponses = {
+    /**
+     * forbidden_page 200 response
+     */
+    200: {
+        [key: string]: {
+            [key: string]: unknown;
+        };
+    };
+};
+
+export type forbiddenPageResponse = forbiddenPageResponses[keyof forbiddenPageResponses];
+
 export type itemsPageData = {
     body?: never;
     path?: never;

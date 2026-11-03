@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 
-import { Alert, Field, NotFound, Page } from './components';
+import { Alert, Field, Forbidden, NotFound, Page } from './components';
 
 // NotFound renders a <Link>, so it needs a router in scope — the same context
 // the App tree supplies in the browser and StaticRouter supplies on the server.
@@ -13,6 +13,14 @@ describe('shared components', () => {
     render(<Field id="email" label="Email" value="a@example.com" onChange={() => {}} />);
     expect(screen.getByLabelText('Email')).toBeDefined();
     expect(screen.getByTestId('email-input').value).toBe('a@example.com');
+  });
+
+  it('leaves the value to the browser when the caller does not manage it', () => {
+    render(<Field id="email" name="username" label="Email" />);
+    const input = screen.getByTestId('email-input');
+    fireEvent.change(input, { target: { value: 'a@example.com' } });
+    expect(input.value).toBe('a@example.com');
+    expect(input.getAttribute('name')).toBe('username');
   });
 
   it('marks a field invalid when it carries an error', () => {
@@ -35,6 +43,14 @@ describe('shared components', () => {
     render(<Page title="Items" actions={<span>action</span>}>body</Page>);
     expect(screen.getByRole('heading', { name: 'Items' })).toBeDefined();
     expect(screen.getByText('action')).toBeDefined();
+  });
+});
+
+describe('Forbidden', () => {
+  it('says so and offers a way back', () => {
+    inRouter(<Forbidden />);
+    expect(screen.getByRole('heading', { name: 'Forbidden' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Back to the dashboard' })).toBeDefined();
   });
 });
 

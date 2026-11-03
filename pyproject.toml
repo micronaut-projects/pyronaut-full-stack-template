@@ -21,6 +21,9 @@ aot-cache = true
 suppressions = [
   "micronaut.views.react.dev",
   "micronaut.python.pooled",
+  # Micronaut Security 5.4.0 publishes a schema that marks `pattern` as required as
+  # soon as `micronaut.security.filter` is configured. It has a default and no setter.
+  "micronaut.security.filter.pattern",
 ]
 
 [tool.pyronaut]
