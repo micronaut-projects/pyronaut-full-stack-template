@@ -57,7 +57,7 @@ jobs:
       # headless shell, and more after that, around 400 MB in total. Cache it
       # or every run pays for it again.
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
